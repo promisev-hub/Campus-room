@@ -1,0 +1,1235 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>CampusRoom</title>
+
+<!-- Firebase SDK -->
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700;800&family=Inter:wght@400;500&display=swap');
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+html,body{height:100%;overflow:hidden;}
+body{background:#0A0010;color:#F0EEFF;font-family:'Inter',sans-serif;-webkit-tap-highlight-color:transparent;}
+input,select,textarea{outline:none;font-family:inherit;}
+button{cursor:pointer;border:none;background:none;font-family:inherit;}
+::-webkit-scrollbar{width:0;height:0;}
+:root{
+  --bg:#0A0010;--bg2:#0F0020;--surface:#180830;--card:#1E1040;
+  --border:#3D1A6E;--purple:#7B00FF;--p2:#9B30FF;--p3:#B86EFF;
+  --plight:#D4AAFF;--red:#CC1133;--rlight:#FF3355;
+  --white:#FFFFFF;--off:#F0EEFF;--muted:#8877AA;
+  --glass:rgba(123,0,255,.13);--gb:rgba(184,110,255,.28);
+}
+/* PAGE SYSTEM */
+.page{position:fixed;inset:0;background:var(--bg);display:none;overflow-y:auto;z-index:5;}
+.page.show{display:flex;flex-direction:column;}
+/* BUTTONS */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:11px 22px;border-radius:12px;font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:14px;border:none;cursor:pointer;transition:all .2s;}
+.btn:active{transform:scale(.97);}
+.btn-p{background:linear-gradient(135deg,var(--purple),var(--p2));color:#fff;box-shadow:0 4px 20px rgba(123,0,255,.4);}
+.btn-g{background:var(--glass);color:var(--plight);border:1px solid var(--gb);}
+.btn-d{background:rgba(204,17,51,.18);color:#FF6688;border:1px solid rgba(204,17,51,.3);}
+.btn-w{width:100%;}
+/* FIELDS */
+.field{margin-bottom:13px;}
+.field label{display:block;font-size:11px;color:var(--muted);margin-bottom:5px;font-family:'Space Grotesk',sans-serif;font-weight:700;letter-spacing:.8px;text-transform:uppercase;}
+.field input,.field select,.field textarea{width:100%;padding:11px 14px;background:rgba(255,255,255,.04);border:1px solid var(--border);border-radius:11px;color:var(--off);font-size:14px;transition:border-color .2s;}
+.field input:focus,.field select:focus,.field textarea:focus{border-color:var(--p3);}
+.field select option{background:#1E1040;}
+.field textarea{resize:vertical;min-height:80px;}
+.err{color:#FF6688;font-size:13px;margin-bottom:10px;padding:8px 12px;background:rgba(204,17,51,.1);border-radius:8px;border:1px solid rgba(204,17,51,.2);display:none;}
+.err.show{display:block;}
+.ok{color:#6EE7B7;font-size:13px;margin-bottom:10px;padding:8px 12px;background:rgba(52,211,153,.1);border-radius:8px;border:1px solid rgba(52,211,153,.2);display:none;}
+.ok.show{display:block;}
+.card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:16px;}
+.pill{display:inline-block;padding:3px 10px;border-radius:6px;font-size:12px;font-weight:700;background:rgba(123,0,255,.22);color:var(--plight);border:1px solid rgba(184,110,255,.3);}
+/* LOGO */
+.logo-wrap{width:80px;height:80px;border-radius:22px;margin:0 auto 18px;background:linear-gradient(145deg,#2A0060,#7B00FF,#A030FF);display:flex;align-items:center;justify-content:center;box-shadow:0 8px 36px rgba(123,0,255,.6),inset 0 1px 0 rgba(255,255,255,.18);position:relative;overflow:hidden;flex-shrink:0;}
+.logo-wrap::before{content:'';position:absolute;inset:0;background:linear-gradient(135deg,rgba(255,255,255,.18)0%,transparent 55%);border-radius:inherit;}
+.logo-inner{position:relative;z-index:1;text-align:center;}
+.logo-cr{font-family:'Space Grotesk',sans-serif;font-weight:800;font-size:24px;color:#fff;letter-spacing:-1px;line-height:1;}
+.logo-sub{font-size:7px;font-weight:700;color:rgba(255,255,255,.55);letter-spacing:2.5px;text-transform:uppercase;}
+.logo-dot{width:5px;height:5px;border-radius:50%;background:var(--rlight);margin:3px auto 0;box-shadow:0 0 7px var(--rlight);}
+.logo-sm{width:38px;height:38px;border-radius:11px;background:linear-gradient(145deg,#2A0060,#7B00FF,#A030FF);display:flex;align-items:center;justify-content:center;font-family:'Space Grotesk',sans-serif;font-weight:800;font-size:14px;color:#fff;box-shadow:0 4px 14px rgba(123,0,255,.5);flex-shrink:0;}
+/* LOADING SPINNER */
+#loading{position:fixed;inset:0;background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:999;}
+.spinner{width:48px;height:48px;border:3px solid rgba(123,0,255,.2);border-top-color:var(--purple);border-radius:50%;animation:spin 1s linear infinite;margin-bottom:16px;}
+@keyframes spin{to{transform:rotate(360deg);}}
+/* LANDING */
+#pg-land{align-items:center;justify-content:center;text-align:center;padding:32px 24px;position:relative;}
+.g1{position:fixed;width:520px;height:520px;border-radius:50%;background:radial-gradient(circle,rgba(123,0,255,.38)0%,transparent 68%);top:-8%;left:50%;transform:translateX(-50%);pointer-events:none;animation:gp 5s ease-in-out infinite;}
+.g2{position:fixed;width:300px;height:300px;border-radius:50%;background:radial-gradient(circle,rgba(204,17,51,.22)0%,transparent 65%);bottom:8%;right:-5%;pointer-events:none;}
+@keyframes gp{0%,100%{opacity:.65;}50%{opacity:1;}}
+.land-h{font-family:'Space Grotesk',sans-serif;font-size:clamp(2.2rem,9vw,3.6rem);font-weight:800;line-height:1;margin-bottom:8px;letter-spacing:-1.5px;}
+.land-h .gw{background:linear-gradient(135deg,#fff,#D4AAFF);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;}
+.land-h .gr2{color:var(--rlight);}
+.land-p{color:var(--muted);font-size:15px;line-height:1.7;margin-bottom:34px;max-width:320px;margin-left:auto;margin-right:auto;}
+.chips{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-bottom:16px;}
+.chip{background:var(--glass);color:var(--plight);border:1px solid var(--gb);border-radius:20px;padding:6px 14px;font-size:12px;font-weight:600;}
+/* AUTH */
+.auth-pg{align-items:flex-start;justify-content:center;padding:22px 16px 40px;}
+.abox{width:100%;max-width:460px;}
+.ahead{text-align:center;margin-bottom:20px;}
+.ahead h2{font-family:'Space Grotesk',sans-serif;font-size:22px;font-weight:800;margin-bottom:3px;}
+.ahead h2 .gg{background:linear-gradient(135deg,var(--p2),var(--plight));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;}
+.ahead p{color:var(--muted);font-size:13px;}
+.acard{background:rgba(24,8,48,.85);border:1px solid var(--border);border-radius:22px;padding:24px;backdrop-filter:blur(20px);}
+.afoot{text-align:center;font-size:13px;color:var(--muted);margin-top:14px;}
+.afoot span{color:var(--plight);cursor:pointer;font-weight:700;}
+/* OTP */
+.otp-row{display:flex;gap:8px;justify-content:center;margin:18px 0;}
+.otp-box{width:45px;height:52px;background:rgba(255,255,255,.04);border:2px solid var(--border);border-radius:11px;color:#fff;font-size:21px;font-weight:700;text-align:center;font-family:'Space Grotesk',sans-serif;transition:border-color .2s;}
+.otp-box:focus{border-color:var(--p2);box-shadow:0 0 12px rgba(123,0,255,.3);}
+.otimer{text-align:center;color:var(--muted);font-size:13px;margin-bottom:12px;}
+.otimer span{color:var(--plight);cursor:pointer;font-weight:700;}
+/* itype */
+.itype-row{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:14px;}
+.itype{padding:12px 6px;border-radius:12px;border:1px solid var(--border);background:rgba(255,255,255,.03);text-align:center;cursor:pointer;transition:all .2s;}
+.itype.sel{border-color:var(--p2);background:rgba(123,0,255,.2);}
+.itype .ie{font-size:22px;margin-bottom:4px;}
+.itype .il{font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:11px;color:var(--muted);}
+.itype.sel .il{color:var(--plight);}
+/* role grid */
+.rgrid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px;}
+.rcard{padding:16px 8px;border-radius:14px;border:1px solid var(--border);background:rgba(255,255,255,.03);text-align:center;cursor:pointer;transition:all .2s;}
+.rcard.sel{border-color:var(--p2);background:rgba(123,0,255,.2);}
+.rcard .ri{font-size:26px;margin-bottom:4px;}
+.rcard .rn{font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:13px;}
+.rcard.sel .rn{color:var(--plight);}
+/* biz */
+.biz-toggle{display:flex;gap:10px;margin-bottom:12px;}
+.biz-opt{flex:1;padding:11px;border-radius:11px;border:1px solid var(--border);background:transparent;text-align:center;cursor:pointer;font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:13px;color:var(--muted);transition:all .2s;}
+.biz-opt.sel{border-color:var(--p2);background:rgba(123,0,255,.2);color:var(--plight);}
+.step{display:none;}
+.step.on{display:block;}
+.divider{display:flex;align-items:center;gap:10px;margin:14px 0;}
+.divider::before,.divider::after{content:'';flex:1;height:1px;background:var(--border);}
+.divider span{font-size:12px;color:var(--muted);}
+/* APP SHELL */
+#pg-app{display:none;flex-direction:column;overflow:hidden;}
+#pg-app.show{display:flex;}
+#topbar{height:54px;flex-shrink:0;background:rgba(10,0,20,.96);border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;padding:0 14px;backdrop-filter:blur(14px);}
+.brand{font-family:'Space Grotesk',sans-serif;font-weight:800;font-size:18px;display:flex;align-items:center;gap:9px;}
+.bw{color:#fff;}.bp{background:linear-gradient(135deg,var(--p2),var(--plight));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;}
+#content{flex:1;overflow:hidden;position:relative;}
+.tab{position:absolute;inset:0;display:none;}
+.tab.on{display:block;}
+#botnav{height:62px;flex-shrink:0;background:rgba(10,0,20,.96);border-top:1px solid var(--border);display:flex;backdrop-filter:blur(14px);}
+.nb{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;color:var(--muted);position:relative;transition:color .2s;}
+.nb.on{color:var(--plight);}
+.nb.on::before{content:'';position:absolute;top:0;left:50%;transform:translateX(-50%);width:30px;height:2px;background:linear-gradient(90deg,var(--purple),var(--plight));border-radius:2px;}
+.ni{font-size:20px;}.nl{font-size:10px;font-weight:700;font-family:'Space Grotesk',sans-serif;}
+/* HOME */
+#tab-home{flex-direction:column;}
+#tab-home.on{display:flex;}
+.story-row{display:flex;gap:10px;padding:10px 14px;overflow-x:auto;flex-shrink:0;border-bottom:1px solid var(--border);}
+.story-row::-webkit-scrollbar{display:none;}
+.story-item{display:flex;flex-direction:column;align-items:center;gap:4px;flex-shrink:0;cursor:pointer;}
+.story-ring{width:52px;height:52px;border-radius:50%;background:linear-gradient(135deg,var(--red),var(--purple),var(--plight));padding:2px;display:flex;align-items:center;justify-content:center;}
+.story-av{width:44px;height:44px;border-radius:50%;background:var(--surface);display:flex;align-items:center;justify-content:center;font-size:20px;border:2px solid var(--bg);overflow:hidden;}
+.story-av img{width:100%;height:100%;object-fit:cover;}
+.story-add{width:52px;height:52px;border-radius:50%;border:2px dashed var(--border);display:flex;align-items:center;justify-content:center;font-size:22px;color:var(--muted);flex-shrink:0;cursor:pointer;}
+.story-name{font-size:10px;color:var(--muted);max-width:52px;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.feed-tabs{display:flex;gap:0;overflow-x:auto;border-bottom:1px solid var(--border);flex-shrink:0;}
+.feed-tabs::-webkit-scrollbar{display:none;}
+.ftab{padding:9px 16px;font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:12px;color:var(--muted);white-space:nowrap;border-bottom:2px solid transparent;cursor:pointer;transition:all .2s;}
+.ftab.on{color:var(--plight);border-bottom-color:var(--purple);}
+.compose-bar{display:flex;align-items:center;gap:10px;padding:12px 14px;border-bottom:1px solid var(--border);flex-shrink:0;}
+.compose-av{width:38px;height:38px;border-radius:50%;background:linear-gradient(135deg,var(--purple),var(--p2));display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;overflow:hidden;cursor:pointer;}
+.compose-av img{width:100%;height:100%;object-fit:cover;}
+.compose-inp{flex:1;background:rgba(255,255,255,.05);border:1px solid var(--border);border-radius:22px;padding:9px 16px;color:var(--muted);font-size:14px;cursor:pointer;}
+.feed-scroll{flex:1;overflow-y:auto;}
+.feed-post{background:var(--card);border-bottom:1px solid var(--border);padding:14px;}
+.fp-head{display:flex;align-items:center;gap:10px;margin-bottom:10px;}
+.fp-av{width:42px;height:42px;border-radius:50%;background:linear-gradient(135deg,var(--purple),var(--p2));display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;overflow:hidden;}
+.fp-av img{width:100%;height:100%;object-fit:cover;}
+.fp-name{font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:14px;}
+.fp-meta{font-size:11px;color:var(--muted);}
+.fp-txt{font-size:14px;line-height:1.6;color:var(--off);margin-bottom:12px;}
+.fp-img{width:100%;border-radius:12px;max-height:280px;object-fit:cover;margin-bottom:12px;display:block;}
+.fp-acts{display:flex;gap:20px;}
+.fp-acts button{display:flex;align-items:center;gap:5px;color:var(--muted);font-size:13px;font-weight:600;}
+.fp-acts button.lk{color:var(--rlight);}
+/* post compose modal */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:100;display:none;align-items:flex-end;}
+.modal-overlay.show{display:flex;}
+.modal-box{background:var(--surface);border-radius:22px 22px 0 0;width:100%;padding:20px;border:1px solid var(--border);}
+.modal-box h3{font-family:'Space Grotesk',sans-serif;font-weight:800;font-size:18px;margin-bottom:16px;}
+.modal-close{float:right;font-size:24px;color:var(--muted);cursor:pointer;margin-top:-4px;}
+/* profile pic upload */
+.pic-upload-area{position:relative;width:86px;height:86px;margin:0 auto 14px;cursor:pointer;}
+.pic-upload-area .pav{width:86px;height:86px;border-radius:50%;background:linear-gradient(135deg,var(--purple),var(--p2),var(--plight));display:flex;align-items:center;justify-content:center;font-size:34px;border:3px solid rgba(184,110,255,.4);box-shadow:0 8px 30px rgba(123,0,255,.4);overflow:hidden;}
+.pic-upload-area .pav img{width:100%;height:100%;object-fit:cover;}
+.pic-upload-btn{position:absolute;bottom:0;right:0;width:28px;height:28px;border-radius:50%;background:var(--purple);display:flex;align-items:center;justify-content:center;font-size:14px;border:2px solid var(--bg);}
+.pic-progress{display:none;margin-top:8px;text-align:center;font-size:12px;color:var(--plight);}
+/* REELS */
+.sw{height:100%;overflow-y:scroll;scroll-snap-type:y mandatory;scrollbar-width:none;}
+.sw::-webkit-scrollbar{display:none;}
+.si{scroll-snap-align:start;flex-shrink:0;position:relative;overflow:hidden;display:flex;}
+.sdots{position:absolute;right:10px;top:50%;transform:translateY(-50%);display:flex;flex-direction:column;gap:5px;z-index:20;}
+.sdot{width:4px;height:4px;border-radius:4px;background:rgba(255,255,255,.18);cursor:pointer;transition:all .3s;}
+.sdot.on{height:18px;background:linear-gradient(180deg,var(--p2),var(--plight));}
+.rc{align-items:center;justify-content:center;width:100%;}
+.rbg{font-size:130px;opacity:.06;position:absolute;user-select:none;}
+.rply{width:78px;height:78px;border-radius:50%;background:rgba(123,0,255,.32);border:2px solid rgba(184,110,255,.45);display:flex;align-items:center;justify-content:center;font-size:30px;z-index:2;}
+.rg{position:absolute;bottom:0;left:0;right:0;padding:55px 16px 18px;background:linear-gradient(0deg,rgba(10,0,16,.96),transparent);z-index:3;}
+.rtit{font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:16px;margin:9px 0 4px;}
+.rupl{font-size:13px;color:var(--muted);}
+.rbr{display:flex;align-items:flex-end;justify-content:space-between;margin-top:10px;}
+.rmt{font-size:12px;color:var(--muted);}
+.racts{display:flex;gap:18px;}
+.racts button{display:flex;flex-direction:column;align-items:center;gap:3px;color:var(--off);font-size:11px;font-weight:700;}
+.racts button.lk{color:var(--rlight);}
+.ric2{font-size:25px;}
+/* TER */
+#tab-ter{overflow-y:auto;}
+.tst{position:sticky;top:0;background:var(--bg);padding:12px 14px 0;z-index:10;border-bottom:1px solid var(--border);}
+.tst h2{font-family:'Space Grotesk',sans-serif;font-size:19px;font-weight:800;margin-bottom:11px;background:linear-gradient(135deg,#fff,var(--plight));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;}
+.stabs{display:flex;gap:8px;margin-bottom:11px;}
+.stb{flex:1;padding:9px 0;border-radius:10px;border:1px solid var(--border);background:transparent;color:var(--muted);font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:12px;transition:all .2s;}
+.stb.on{border-color:var(--p2);background:rgba(123,0,255,.2);color:var(--plight);}
+.tbody{padding:12px 14px 16px;}
+.tp{display:none;}.tp.on{display:block;}
+.cg{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px;}
+.ccard{padding:13px;border-radius:13px;background:linear-gradient(135deg,rgba(123,0,255,.18),rgba(30,16,64,.9));border:1px solid var(--border);}
+.ccode{font-family:'Space Grotesk',sans-serif;font-weight:800;font-size:13px;color:var(--plight);margin-bottom:4px;}
+.ctitle2{font-family:'Space Grotesk',sans-serif;font-weight:600;font-size:12px;color:var(--off);}
+.cunits{font-size:11px;color:var(--muted);margin-top:3px;}
+.frow{display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap;align-items:center;}
+.fb{padding:7px 13px;border-radius:8px;border:1px solid var(--border);background:transparent;color:var(--muted);font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:11px;}
+.fb.on{border-color:var(--p2);background:rgba(123,0,255,.2);color:var(--plight);}
+.fl{display:flex;flex-direction:column;gap:11px;}
+.fcd{display:flex;gap:11px;align-items:flex-start;}
+.fci{font-size:27px;}
+.ftgs{display:flex;gap:7px;flex-wrap:wrap;margin-bottom:5px;}
+.ftt{font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:13px;margin-bottom:2px;}
+.fmt{font-size:12px;color:var(--muted);}
+.analytics{background:linear-gradient(135deg,rgba(123,0,255,.15),rgba(204,17,51,.08));border:1px solid var(--border);border-radius:14px;padding:14px;margin-bottom:12px;}
+.analytics h4{font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:14px;margin-bottom:10px;color:var(--plight);}
+.bar-row{display:flex;align-items:center;gap:10px;margin-bottom:8px;}
+.bar-lbl{font-size:12px;color:var(--muted);width:60px;flex-shrink:0;}
+.bar-track{flex:1;height:7px;background:rgba(255,255,255,.07);border-radius:4px;overflow:hidden;}
+.bar-fill{height:100%;border-radius:4px;background:linear-gradient(90deg,var(--purple),var(--plight));}
+.bar-val{font-size:11px;color:var(--muted);width:28px;text-align:right;flex-shrink:0;}
+/* CHAT */
+#tab-chat{height:100%;}
+#tab-chat.on{display:flex;flex-direction:column;}
+#pn-contacts{display:flex;flex-direction:column;height:100%;}
+.cstk{padding:13px 14px 10px;border-bottom:1px solid var(--border);flex-shrink:0;}
+.cstk h2{font-family:'Space Grotesk',sans-serif;font-size:19px;font-weight:800;margin-bottom:10px;background:linear-gradient(135deg,#fff,var(--plight));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;}
+.csrch{width:100%;padding:9px 14px;background:rgba(255,255,255,.04);border:1px solid var(--border);border-radius:11px;color:var(--off);font-size:14px;margin-bottom:0;}
+.chat-ftabs{display:flex;gap:0;overflow-x:auto;border-bottom:1px solid var(--border);flex-shrink:0;}
+.chat-ftabs::-webkit-scrollbar{display:none;}
+.cftab{padding:8px 14px;font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:11px;color:var(--muted);white-space:nowrap;border-bottom:2px solid transparent;cursor:pointer;transition:all .2s;}
+.cftab.on{color:var(--plight);border-bottom-color:var(--purple);}
+.cscrl{overflow-y:auto;flex:1;}
+.ci{display:flex;align-items:center;gap:11px;padding:12px 14px;border-bottom:1px solid rgba(61,26,110,.35);cursor:pointer;transition:background .15s;}
+.ci:active{background:rgba(123,0,255,.08);}
+.cav-wrap{width:47px;height:47px;border-radius:50%;background:linear-gradient(135deg,var(--purple),var(--p2));display:flex;align-items:center;justify-content:center;font-size:21px;flex-shrink:0;position:relative;overflow:hidden;}
+.cav-wrap img{width:100%;height:100%;object-fit:cover;}
+.odot{position:absolute;bottom:2px;right:2px;width:11px;height:11px;border-radius:50%;background:#22c55e;border:2px solid var(--bg);}
+.cin{flex:1;min-width:0;}
+.cn{font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:14px;}
+.cp{font-size:12px;color:var(--muted);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.crt{display:flex;flex-direction:column;align-items:flex-end;gap:4px;flex-shrink:0;}
+.ctm{font-size:11px;color:var(--muted);}
+.ub2{background:linear-gradient(135deg,var(--red),var(--rlight));color:#fff;border-radius:50%;width:20px;height:20px;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;}
+#pn-cw{display:none;flex-direction:column;height:100%;}
+#pn-cw.show{display:flex;}
+.cwh{display:flex;align-items:center;gap:11px;padding:10px 13px;border-bottom:1px solid var(--border);flex-shrink:0;background:rgba(10,0,20,.96);}
+.cwbk{font-size:28px;color:var(--plight);cursor:pointer;line-height:1;}
+.cwav{width:40px;height:40px;border-radius:50%;background:linear-gradient(135deg,var(--purple),var(--p2));display:flex;align-items:center;justify-content:center;font-size:21px;overflow:hidden;}
+.cwav img{width:100%;height:100%;object-fit:cover;}
+.cwn{font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:15px;}
+.cws{font-size:12px;margin-top:1px;}
+.msgs{flex:1;overflow-y:auto;padding:13px 12px;display:flex;flex-direction:column;gap:9px;background:var(--bg2);}
+.mr{display:flex;align-items:flex-end;gap:8px;}
+.mr.me{flex-direction:row-reverse;}
+.msm{width:27px;height:27px;border-radius:50%;background:linear-gradient(135deg,var(--purple),var(--p2));display:flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0;overflow:hidden;}
+.msm img{width:100%;height:100%;object-fit:cover;}
+.mb{max-width:72%;padding:10px 13px;border-radius:15px;font-size:14px;line-height:1.5;background:var(--card);color:var(--off);border-bottom-left-radius:4px;border:1px solid var(--border);}
+.mr.me .mb{background:linear-gradient(135deg,var(--purple),var(--p2));border:none;border-bottom-left-radius:15px;border-bottom-right-radius:4px;}
+.mt{font-size:10px;color:var(--muted);margin-top:3px;}
+.mr.me .mt{text-align:right;}
+.mir{display:flex;align-items:center;gap:9px;padding:9px 12px;border-top:1px solid var(--border);flex-shrink:0;background:rgba(10,0,20,.96);}
+.minp{flex:1;padding:10px 15px;background:rgba(255,255,255,.05);border:1px solid var(--border);border-radius:24px;color:var(--off);font-size:14px;}
+.msnd{width:43px;height:43px;border-radius:50%;background:linear-gradient(135deg,var(--purple),var(--p2));display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;box-shadow:0 4px 14px rgba(123,0,255,.4);}
+/* PROFILE */
+#tab-profile{overflow-y:auto;background:var(--bg);}
+.phead{text-align:center;padding:26px 16px 18px;position:relative;overflow:hidden;}
+.phead-bg{position:absolute;top:0;left:0;right:0;height:130px;background:linear-gradient(180deg,rgba(123,0,255,.22),transparent);pointer-events:none;}
+.slbl{font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:11px;color:var(--muted);margin-bottom:10px;letter-spacing:2px;text-transform:uppercase;}
+.sgrid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:18px;padding:0 14px;}
+.sc{text-align:center;padding:15px 8px;}
+.si3{font-size:21px;margin-bottom:4px;}
+.sv{font-family:'Space Grotesk',sans-serif;font-weight:800;font-size:22px;background:linear-gradient(135deg,var(--p2),var(--plight));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;}
+.sl{font-size:11px;color:var(--muted);font-weight:700;}
+.ml{display:flex;flex-direction:column;gap:9px;margin-bottom:18px;padding:0 14px;}
+.mi{display:flex;align-items:center;gap:13px;padding:13px 15px;cursor:pointer;border-radius:13px;transition:background .15s;}
+.mi:active{background:rgba(123,0,255,.08);}
+.mi .mii{font-size:20px;}
+.mi .mln{font-family:'Space Grotesk',sans-serif;font-weight:600;font-size:14px;}
+.mi .chv{margin-left:auto;color:var(--muted);}
+/* toast */
+.toast{position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:rgba(30,16,64,.95);border:1px solid var(--border);border-radius:12px;padding:12px 20px;font-size:13px;font-weight:600;color:var(--off);z-index:200;display:none;white-space:nowrap;backdrop-filter:blur(12px);}
+.toast.show{display:block;animation:fadeInOut 3s forwards;}
+@keyframes fadeInOut{0%{opacity:0;transform:translateX(-50%) translateY(10px);}15%{opacity:1;transform:translateX(-50%) translateY(0);}80%{opacity:1;}100%{opacity:0;}}
+</style>
+</head>
+<body>
+
+<!-- LOADING -->
+<div id="loading">
+  <div class="logo-wrap" style="margin-bottom:20px;">
+    <div class="logo-inner">
+      <div class="logo-cr">CR</div>
+      <div class="logo-sub">Campus</div>
+      <div class="logo-dot"></div>
+    </div>
+  </div>
+  <div class="spinner"></div>
+  <p style="color:var(--muted);font-size:13px;">Loading CampusRoom…</p>
+</div>
+
+<!-- TOAST -->
+<div class="toast" id="toast"></div>
+
+<!-- POST COMPOSE MODAL -->
+<div class="modal-overlay" id="compose-modal">
+  <div class="modal-box">
+    <span class="modal-close" onclick="closeCompose()">✕</span>
+    <h3>Create Post</h3>
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;">
+      <div class="fp-av" id="compose-modal-av" style="width:40px;height:40px;font-size:16px;"></div>
+      <div>
+        <div style="font-family:'Space Grotesk',sans-serif;font-weight:700;" id="compose-modal-name"></div>
+        <div style="font-size:12px;color:var(--muted);" id="compose-modal-role"></div>
+      </div>
+    </div>
+    <textarea id="post-text" style="width:100%;background:rgba(255,255,255,.04);border:1px solid var(--border);border-radius:12px;padding:12px;color:var(--off);font-size:14px;min-height:100px;resize:none;" placeholder="What is on your mind?"></textarea>
+    <div style="margin-top:10px;">
+      <label style="display:flex;align-items:center;gap:8px;cursor:pointer;color:var(--muted);font-size:13px;">
+        <input type="file" id="post-img-file" accept="image/*" style="display:none" onchange="previewPostImg(this)">
+        <span onclick="document.getElementById('post-img-file').click()">🖼️ Add Photo</span>
+      </label>
+      <img id="post-img-preview" style="display:none;width:100%;border-radius:10px;margin-top:8px;max-height:200px;object-fit:cover;">
+    </div>
+    <button class="btn btn-p btn-w" style="margin-top:14px;" onclick="submitPost()">Post</button>
+  </div>
+</div>
+
+<!-- LANDING -->
+<div id="pg-land" class="page show">
+  <div class="g1"></div><div class="g2"></div>
+  <div style="position:relative;z-index:1;display:flex;flex-direction:column;align-items:center;width:100%;">
+    <div class="logo-wrap">
+      <div class="logo-inner">
+        <div class="logo-cr">CR</div>
+        <div class="logo-sub">Campus</div>
+        <div class="logo-dot"></div>
+      </div>
+    </div>
+    <div style="font-family:'Space Grotesk',sans-serif;font-size:12px;font-weight:700;color:var(--muted);letter-spacing:3.5px;text-transform:uppercase;margin-bottom:14px;">Nigeria's Campus Platform</div>
+    <h1 class="land-h"><span class="gw">Campus</span><span class="gr2">Room</span></h1>
+    <p class="land-p">Your all-in-one higher institution platform — connecting aspirants, students, lecturers and alumni across Nigeria.</p>
+    <div style="display:flex;gap:12px;justify-content:center;margin-bottom:28px;flex-wrap:wrap;">
+      <button class="btn btn-p" onclick="show('pg-login')" style="padding:13px 30px;font-size:15px;">Sign In</button>
+      <button class="btn btn-g" onclick="show('pg-register')" style="padding:13px 30px;font-size:15px;">Register</button>
+    </div>
+    <div class="chips">
+      <span class="chip">🎓 Aspirant</span><span class="chip">📚 Student</span>
+      <span class="chip">👨‍🏫 Lecturer</span><span class="chip">🏅 Alumni</span>
+    </div>
+  </div>
+</div>
+
+<!-- LOGIN -->
+<div id="pg-login" class="page auth-pg">
+  <div class="abox">
+    <div class="ahead">
+      <div class="logo-wrap" style="width:60px;height:60px;border-radius:16px;margin-bottom:12px;"><div class="logo-inner"><div class="logo-cr" style="font-size:17px;">CR</div><div class="logo-dot" style="width:4px;height:4px;"></div></div></div>
+      <h2>Welcome <span class="gg">Back</span></h2>
+      <p>Sign in to CampusRoom</p>
+    </div>
+    <div class="acard">
+      <div id="login-step-a">
+        <div class="field"><label>Email Address</label><input id="l-email" type="email" placeholder="you@example.com"></div>
+        <div class="field"><label>Password</label><input id="l-pw" type="password" placeholder="••••••••"></div>
+        <p class="err" id="l-err"></p>
+        <button class="btn btn-p btn-w" style="margin-bottom:12px" onclick="doLogin()">Sign In →</button>
+        <div class="divider"><span>or</span></div>
+        <p class="afoot" style="margin-top:0">No account? <span onclick="show('pg-register')">Register here</span></p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- REGISTER -->
+<div id="pg-register" class="page auth-pg">
+  <div class="abox">
+    <div class="ahead">
+      <div class="logo-wrap" style="width:60px;height:60px;border-radius:16px;margin-bottom:12px;"><div class="logo-inner"><div class="logo-cr" style="font-size:17px;">CR</div><div class="logo-dot" style="width:4px;height:4px;"></div></div></div>
+      <h2><span class="gg">Create</span> Account</h2>
+      <p id="rstep-lbl">Step 1 of 6 — Institution Type</p>
+    </div>
+    <div class="acard">
+      <div class="step on" id="rs1">
+        <p style="font-size:13px;color:var(--muted);margin-bottom:12px;text-align:center;">What type of institution are you from?</p>
+        <div class="itype-row">
+          <div class="itype" onclick="pickIType('University')"><div class="ie">🏛️</div><div class="il">University</div></div>
+          <div class="itype" onclick="pickIType('Polytechnic')"><div class="ie">⚙️</div><div class="il">Polytechnic</div></div>
+          <div class="itype" onclick="pickIType('College')"><div class="ie">🎓</div><div class="il">College of Ed.</div></div>
+        </div>
+      </div>
+      <div class="step" id="rs2">
+        <div class="field"><label>Institution Name</label><select id="r-inst"><option value="">-- Select institution --</option></select></div>
+        <div class="field"><label>Faculty / School</label><select id="r-faculty" onchange="loadDepts()"><option value="">-- Select faculty --</option></select></div>
+        <div class="field"><label>Department</label><select id="r-dept"><option value="">-- Select department --</option></select></div>
+      </div>
+      <div class="step" id="rs3">
+        <p style="font-size:13px;color:var(--muted);margin-bottom:12px;text-align:center;">What is your role?</p>
+        <div class="rgrid">
+          <div class="rcard" onclick="pickRole('Aspirant')"><div class="ri">🎓</div><div class="rn">Aspirant</div></div>
+          <div class="rcard" onclick="pickRole('Student')"><div class="ri">📚</div><div class="rn">Student</div></div>
+          <div class="rcard" onclick="pickRole('Lecturer')"><div class="ri">👨‍🏫</div><div class="rn">Lecturer</div></div>
+          <div class="rcard" onclick="pickRole('Alumni')"><div class="ri">🏅</div><div class="rn">Alumni</div></div>
+        </div>
+      </div>
+      <div class="step" id="rs4">
+        <div class="field"><label>Full Name *</label><input id="r-name" placeholder="Surname Firstname Othername"></div>
+        <div class="field"><label>Date of Birth *</label><input id="r-dob" type="date"></div>
+        <div class="field"><label>State of Origin *</label><select id="r-state"><option value="">-- Select --</option></select></div>
+        <div class="field"><label>Phone</label><input id="r-phone" placeholder="080XXXXXXXX"></div>
+        <div class="field"><label>Email *</label><input id="r-email" type="email" placeholder="you@example.com"></div>
+        <div style="background:rgba(123,0,255,.08);border:1px solid var(--border);border-radius:12px;padding:14px;margin-top:4px;">
+          <p style="font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:13px;margin-bottom:10px;">💼 Do you have a business?</p>
+          <div class="biz-toggle">
+            <div class="biz-opt" id="biz-yes" onclick="setBiz(true)">✅ Yes</div>
+            <div class="biz-opt" id="biz-no" onclick="setBiz(false)">❌ No</div>
+          </div>
+          <div id="biz-fields" style="display:none">
+            <div class="field"><label>Business Name</label><input id="r-biz-name" placeholder="e.g. Chioma Prints"></div>
+            <div class="field"><label>Business Type</label><select id="r-biz-type">
+              <option value="">-- Select type --</option>
+              <option>Retail / Trading</option><option>Food & Catering</option><option>Fashion & Clothing</option>
+              <option>Technology / Software</option><option>Graphics & Design</option><option>Photography / Videography</option>
+              <option>Tutoring / Education</option><option>Hair & Beauty</option><option>Transport / Logistics</option>
+              <option>Agriculture / Farming</option><option>Health & Wellness</option><option>Real Estate</option>
+              <option>Entertainment / Events</option><option>Financial Services</option><option>Other</option>
+            </select></div>
+            <div class="field"><label>Describe Your Business</label><textarea id="r-biz-desc" placeholder="Tell the campus community about what you do…"></textarea></div>
+          </div>
+        </div>
+      </div>
+      <div class="step" id="rs5">
+        <div id="ra-aspirant" style="display:none"><div class="field"><label>JAMB Reg. No.</label><input id="r-jamb" placeholder="34567890AB"></div></div>
+        <div id="ra-student" style="display:none">
+          <div class="field"><label>Matric Number</label><input id="r-matric" placeholder="20/2001/001"></div>
+          <div class="field"><label>Level</label><select id="r-level"><option value="">-- Select --</option><option>100</option><option>200</option><option>300</option><option>400</option><option>500</option></select></div>
+        </div>
+        <div id="ra-lecturer" style="display:none"><div class="field"><label>Staff ID</label><input id="r-staffid" placeholder="STAFF/0012"></div></div>
+        <div id="ra-alumni" style="display:none">
+          <div class="field"><label>Matric Number</label><input id="r-matric-al"></div>
+          <div class="field"><label>Graduation Year</label><select id="r-grad"><option value="">-- Select --</option></select></div>
+        </div>
+        <div class="field"><label>Password</label><input id="r-pw" type="password" placeholder="Min. 8 characters"></div>
+        <div class="field"><label>Confirm Password</label><input id="r-pw2" type="password" placeholder="Re-enter password"></div>
+      </div>
+      <div class="step" id="rs6">
+        <div style="text-align:center;padding:20px 0;">
+          <div style="font-size:48px;margin-bottom:12px;">📧</div>
+          <p style="font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:16px;margin-bottom:8px;">Verify Your Email</p>
+          <p style="font-size:13px;color:var(--muted);line-height:1.6;">We've sent a verification link to<br><strong style="color:var(--plight);" id="r-email-show"></strong></p>
+          <p style="font-size:13px;color:var(--muted);margin-top:12px;">Open your email app, tap the verification link, then come back and tap the button below.</p>
+          <button class="btn btn-p btn-w" style="margin-top:16px;" onclick="checkVerified()">✓ I've Verified My Email</button>
+          <button class="btn btn-g btn-w" style="margin-top:10px;" onclick="resendVerification()">Resend Email</button>
+        </div>
+      </div>
+      <p class="err" id="r-err"></p>
+      <div style="display:flex;gap:10px;margin-top:8px;" id="r-nav-btns">
+        <button class="btn btn-g" id="r-back" style="display:none" onclick="rBack()">← Back</button>
+        <button class="btn btn-p" style="flex:1" id="r-next" onclick="rNext()">Continue →</button>
+      </div>
+      <p class="afoot">Have an account? <span onclick="show('pg-login')">Sign In</span></p>
+    </div>
+  </div>
+</div>
+
+<!-- APP -->
+<div id="pg-app" class="page" style="overflow:hidden;">
+  <header id="topbar">
+    <div class="brand">
+      <div class="logo-sm">CR</div>
+      <span><span class="bw">Campus</span><span class="bp">Room</span></span>
+    </div>
+    <div style="display:flex;align-items:center;gap:10px;">
+      <span class="pill" id="tb-role">Student</span>
+      <button style="font-size:20px;color:var(--muted);">🔔</button>
+    </div>
+  </header>
+  <div id="content">
+    <!-- HOME -->
+    <div id="tab-home" class="tab">
+      <div class="story-row" id="story-row"><div class="story-add" onclick="document.getElementById('post-img-file').click()">＋</div></div>
+      <div class="feed-tabs">
+        <div class="ftab on" onclick="switchFeedTab(this)">For You</div>
+        <div class="ftab" onclick="switchFeedTab(this)">Following</div>
+        <div class="ftab" onclick="switchFeedTab(this)">All</div>
+        <div class="ftab" onclick="switchFeedTab(this)">Educative</div>
+      </div>
+      <div class="compose-bar">
+        <div class="compose-av" id="compose-av" onclick="openCompose()">📚</div>
+        <div class="compose-inp" onclick="openCompose()">What is on your mind?</div>
+        <span style="font-size:22px;color:var(--muted);cursor:pointer;" onclick="openCompose()">🖼️</span>
+      </div>
+      <div class="feed-scroll" id="feed-scroll">
+        <div style="text-align:center;padding:40px 20px;color:var(--muted);">
+          <div style="font-size:40px;margin-bottom:12px;">📢</div>
+          <p style="font-family:'Space Grotesk',sans-serif;font-weight:700;">Loading posts…</p>
+        </div>
+      </div>
+    </div>
+    <!-- REELS -->
+    <div id="tab-reels" class="tab">
+      <div class="sw" id="reels-sw"></div>
+      <div class="sdots" id="reels-dots"></div>
+    </div>
+    <!-- TER -->
+    <div id="tab-ter" class="tab">
+      <div class="tst">
+        <h2>TER &amp; Courses</h2>
+        <div class="stabs">
+          <button class="stb on" id="stb-courses" onclick="switchTER('courses')">📖 Courses</button>
+          <button class="stb" id="stb-ter" onclick="switchTER('ter')">🧪 TER</button>
+        </div>
+      </div>
+      <div class="tbody">
+        <div class="tp on" id="tp-courses">
+          <div class="cg" id="course-grid"></div>
+          <div class="analytics">
+            <h4>📊 Study Analytics</h4>
+            <div class="bar-row"><span class="bar-lbl">CSC 201</span><div class="bar-track"><div class="bar-fill" style="width:78%"></div></div><span class="bar-val">78%</span></div>
+            <div class="bar-row"><span class="bar-lbl">MTH 101</span><div class="bar-track"><div class="bar-fill" style="width:55%"></div></div><span class="bar-val">55%</span></div>
+            <div class="bar-row"><span class="bar-lbl">ENG 202</span><div class="bar-track"><div class="bar-fill" style="width:90%"></div></div><span class="bar-val">90%</span></div>
+          </div>
+        </div>
+        <div class="tp" id="tp-ter">
+          <div class="frow">
+            <button class="fb on" data-f="All" onclick="setF('All')">All</button>
+            <button class="fb" data-f="Past Question" onclick="setF('Past Question')">Past Questions</button>
+            <button class="fb" data-f="Note" onclick="setF('Note')">Notes</button>
+            <button class="fb" data-f="JAMB" onclick="setF('JAMB')">JAMB</button>
+            <button class="btn btn-p" id="up-btn" style="display:none;font-size:11px;padding:7px 12px;margin-left:auto">+ Upload</button>
+          </div>
+          <div class="fl" id="file-list"></div>
+        </div>
+      </div>
+    </div>
+    <!-- CHAT -->
+    <div id="tab-chat" class="tab">
+      <div id="pn-contacts">
+        <div class="cstk">
+          <h2>Messages</h2>
+          <input class="csrch" placeholder="🔍  Search contacts…" oninput="searchC(this.value)" style="margin-bottom:8px;">
+        </div>
+        <div class="chat-ftabs">
+          <div class="cftab on" onclick="switchChatFilter(this,'All')">All</div>
+          <div class="cftab" onclick="switchChatFilter(this,'Unread')">Unread</div>
+          <div class="cftab" onclick="switchChatFilter(this,'Groups')">Groups</div>
+          <div class="cftab" onclick="switchChatFilter(this,'Friends')">Friends</div>
+          <div class="cftab" onclick="switchChatFilter(this,'Family')">Family</div>
+        </div>
+        <div class="cscrl" id="clist"></div>
+      </div>
+      <div id="pn-cw">
+        <div class="cwh">
+          <span class="cwbk" onclick="closeChat()">‹</span>
+          <div class="cwav" id="cw-av">👤</div>
+          <div><div class="cwn" id="cw-name">Name</div><div class="cws" id="cw-st">Online</div></div>
+        </div>
+        <div class="msgs" id="msgs"></div>
+        <div class="mir">
+          <input class="minp" id="minp" placeholder="Type a message…" onkeydown="if(event.key==='Enter')sendMsg()">
+          <button class="msnd" onclick="sendMsg()">➤</button>
+        </div>
+      </div>
+    </div>
+    <!-- PROFILE -->
+    <div id="tab-profile" class="tab">
+      <div class="phead">
+        <div class="phead-bg"></div>
+        <!-- Profile pic upload -->
+        <div class="pic-upload-area" onclick="document.getElementById('pic-file').click()">
+          <div class="pav" id="prof-av-wrap">
+            <span id="prof-av-emoji">📚</span>
+            <img id="prof-av-img" style="display:none;width:100%;height:100%;object-fit:cover;border-radius:50%;">
+          </div>
+          <div class="pic-upload-btn">📷</div>
+        </div>
+        <input type="file" id="pic-file" accept="image/*" style="display:none" onchange="uploadProfilePic(this)">
+        <p class="pic-progress" id="pic-progress">Uploading…</p>
+        <div style="font-family:'Space Grotesk',sans-serif;font-weight:800;font-size:21px;" id="prof-name">Name</div>
+        <div style="color:var(--muted);font-size:13px;margin:3px 0 5px;" id="prof-email">email</div>
+        <div style="font-size:12px;color:var(--plight);margin-bottom:4px;font-weight:700;" id="prof-inst"></div>
+        <div style="font-size:12px;color:var(--rlight);margin-bottom:8px;display:none;" id="prof-biz"></div>
+        <span class="pill" id="prof-role">Student</span>
+      </div>
+      <div style="padding:0 14px 6px"><div class="slbl">DASHBOARD</div></div>
+      <div class="sgrid">
+        <div class="card sc"><div class="si3">📖</div><div class="sv" id="stat-courses">0</div><div class="sl">Courses</div></div>
+        <div class="card sc"><div class="si3">🧪</div><div class="sv" id="stat-ter">0</div><div class="sl">TER Files</div></div>
+        <div class="card sc"><div class="si3">📢</div><div class="sv" id="stat-posts">0</div><div class="sl">Posts</div></div>
+        <div class="card sc"><div class="si3">💬</div><div class="sv" id="stat-chats">0</div><div class="sl">Chats</div></div>
+      </div>
+      <div style="padding:0 14px 6px"><div class="slbl">ACCOUNT</div></div>
+      <div class="ml">
+        <div class="card mi" onclick="document.getElementById('pic-file').click()"><span class="mii">📷</span><span class="mln">Change Profile Picture</span><span class="chv">›</span></div>
+        <div class="card mi"><span class="mii">✏️</span><span class="mln">Edit Profile</span><span class="chv">›</span></div>
+        <div class="card mi"><span class="mii">💼</span><span class="mln">My Business</span><span class="chv">›</span></div>
+        <div class="card mi"><span class="mii">🔐</span><span class="mln">Change Password</span><span class="chv">›</span></div>
+        <div class="card mi"><span class="mii">🔔</span><span class="mln">Notifications</span><span class="chv">›</span></div>
+        <div class="card mi"><span class="mii">💬</span><span class="mln">Help &amp; Support</span><span class="chv">›</span></div>
+      </div>
+      <div style="padding:0 14px 24px"><button class="btn btn-d btn-w" onclick="doLogout()">Sign Out</button></div>
+    </div>
+  </div>
+  <nav id="botnav">
+    <button class="nb on" data-t="home" onclick="goTab('home')"><span class="ni">🏠</span><span class="nl">Home</span></button>
+    <button class="nb" data-t="reels" onclick="goTab('reels')"><span class="ni">🎬</span><span class="nl">Reels</span></button>
+    <button class="nb" data-t="ter" onclick="goTab('ter')"><span class="ni">🧪</span><span class="nl">TER</span></button>
+    <button class="nb" data-t="chat" onclick="goTab('chat')"><span class="ni">💬</span><span class="nl">Chat</span></button>
+    <button class="nb" data-t="profile" onclick="goTab('profile')"><span class="ni">👤</span><span class="nl">Profile</span></button>
+  </nav>
+</div>
+
+<script>
+/* ══════════════════════════════
+   FIREBASE CONFIG
+══════════════════════════════ */
+const firebaseConfig = {
+  apiKey: "AIzaSyA6OiewUOMoB0G79aqG2e3H2B1WE4iLUx4",
+  authDomain: "campus-room-d1081.firebaseapp.com",
+  projectId: "campus-room-d1081",
+  storageBucket: "campus-room-d1081.firebasestorage.app",
+  messagingSenderId: "382384472868",
+  appId: "1:382384472868:web:78f628414df48d382c29b1"
+};
+firebase.initializeApp(firebaseConfig);
+const auth = firebase.auth();
+const db = firebase.firestore();
+
+/* ══════════════════════════════
+   CLOUDINARY CONFIG
+══════════════════════════════ */
+const CLOUD_NAME = "ytiagxx3";
+const UPLOAD_PRESET = "campusroom";
+const CLOUD_URL = `https://api.cloudinary.com/v1_1/${CLOUD_NAME}/upload`;
+
+/* ══════════════════════════════
+   INSTITUTIONS DATA
+══════════════════════════════ */
+const INST = {
+  University:["Abubakar Tafawa Balewa University, Bauchi","Ahmadu Bello University, Zaria","Bayero University, Kano","Federal University of Petroleum Resources, Effurun","Federal University of Technology, Akure","Federal University of Technology, Minna","Federal University of Technology, Owerri","Federal University, Dutse, Jigawa","Federal University, Dutsin-Ma, Katsina","Federal University, Kashere, Gombe","Federal University, Lafia, Nasarawa","Federal University, Lokoja, Kogi","Alex Ekwueme University, Ndufu-Alike, Ebonyi","Federal University, Otuoke, Bayelsa","Federal University, Oye-Ekiti, Ekiti","Federal University, Wukari, Taraba","Federal University, Birnin Kebbi","Federal University, Gusau, Zamfara","Michael Okpara University of Agriculture, Umudike","Modibbo Adama University, Yola","National Open University of Nigeria, Abuja","Nnamdi Azikiwe University, Awka","Obafemi Awolowo University, Ile-Ife","University of Abuja","Federal University of Agriculture, Abeokuta","Joseph Sarwuan Tarka University, Makurdi","University of Benin","University of Calabar","University of Ibadan","University of Ilorin","University of Jos","University of Lagos","University of Maiduguri","University of Nigeria, Nsukka","University of Port-Harcourt","University of Uyo","Usmanu Danfodiyo University, Sokoto","Abia State University, Uturu","Adamawa State University, Mubi","Adekunle Ajasin University, Akungba","Akwa Ibom State University","Ambrose Alli University, Ekpoma","Chukwuemeka Odumegwu Ojukwu University","Benue State University, Makurdi","Cross River State University of Technology","Delta State University, Abraka","Ebonyi State University, Abakaliki","Ekiti State University","Enugu State University of Science and Technology","Gombe State University","Imo State University, Owerri","Kaduna State University","Kano University of Science & Technology, Wudil","Kwara State University, Ilorin","Ladoke Akintola University of Technology, Ogbomoso","Lagos State University, Ojo","Niger Delta University, Yenagoa","Nasarawa State University, Keffi","Osun State University, Osogbo","Rivers State University","Olabisi Onabanjo University, Ago Iwoye","Plateau State University","Taraba State University, Jalingo","Achievers University, Owo","Adeleke University, Ede","Afe Babalola University, Ado-Ekiti","Ajayi Crowther University, Ibadan","Al-Hikmah University, Ilorin","American University of Nigeria, Yola","Augustine University, Lagos","Babcock University, Ilishan-Remo","Baze University, Abuja","Bells University of Technology, Otta","Benson Idahosa University, Benin City","Bowen University, Iwo","Caleb University, Lagos","Covenant University, Ota","Crawford University, Igbesa","Elizade University, Ilara-Mokin","Fountain University, Osogbo","Igbinedion University, Okada","Joseph Ayo Babalola University","Kings University, Ode-Omu","Landmark University, Omu-Aran","Lead City University, Ibadan","Madonna University, Okija","Mountain Top University, Ogun","Nile University of Nigeria, Abuja","Pan-Atlantic University, Lagos","Redeemer's University, Ede","Salem University, Lokoja","Veritas University, Abuja","Wellspring University, Edo","Wesley University, Ondo","Covenant University, Ota","Dominican University, Ibadan","Anchor University, Lagos"],
+  Polytechnic:["Yaba College of Technology, Lagos","Federal Polytechnic, Ado-Ekiti","Federal Polytechnic, Bauchi","Federal Polytechnic, Bida, Niger","Federal Polytechnic, Ede, Osun","Federal Polytechnic, Idah, Kogi","Federal Polytechnic, Ilaro, Ogun","Federal Polytechnic, Mubi, Adamawa","Federal Polytechnic, Nasarawa","Federal Polytechnic, Nekede, Imo","Federal Polytechnic, Offa, Kwara","Federal Polytechnic, Oko, Anambra","Akanu Ibiam Federal Polytechnic, Unwana, Ebonyi","Auchi Polytechnic, Edo","Kaduna Polytechnic","Kwara State Polytechnic, Ilorin","Lagos State Polytechnic, Ikorodu","Rivers State Polytechnic, Bori","Delta State Polytechnic, Ozoro","Osun State Polytechnic","Kano State Polytechnic","Adamawa State Polytechnic","Benue State Polytechnic","Imo State Polytechnic","The Polytechnic, Ibadan","The Polytechnic, Ile-Ife"],
+  College:["Adeyemi College of Education, Ondo","FCE (Special), Oyo","FCE, Abeokuta, Ogun","FCE, Asaba, Delta","FCE, Eha-Amufu, Enugu","FCE, Gombe","FCE, Kano","FCE, Obudu, Cross River","FCE, Okene, Kogi","FCE, Omoku, Rivers","FCE, Pankshin, Plateau","FCE, Yola, Adamawa","FCE, Zaria, Kaduna","FCE (Technical), Akoka, Lagos","Tai Solarin College of Education, Ogun","Lagos State College of Education","Osun State College of Education","Oyo State College of Education","Kaduna State College of Education","Kano State College of Education","Anambra State College of Education","Imo State College of Education","Enugu State College of Education"]
+};
+const FACULTIES = {
+  "Faculty of Science":["Computer Science","Information Technology","Software Engineering","Cyber Security","Data Science","Mathematics","Statistics","Physics","Chemistry","Biology","Biochemistry","Microbiology","Geology","Botany","Zoology","Environmental Science"],
+  "Faculty of Engineering":["Civil Engineering","Mechanical Engineering","Electrical/Electronics Engineering","Chemical Engineering","Petroleum Engineering","Agricultural Engineering","Computer Engineering","Aerospace Engineering","Materials & Metallurgical Engineering","Biomedical Engineering","Marine Engineering","Mechatronics Engineering"],
+  "Faculty of Medicine & Health":["Medicine & Surgery (MBBS)","Pharmacy","Nursing Science","Medical Laboratory Science","Physiotherapy","Dentistry (BDS)","Radiography","Public Health","Optometry","Nutrition & Dietetics","Anatomy","Physiology"],
+  "Faculty of Social Sciences":["Economics","Sociology","Political Science","Psychology","Mass Communication","Criminology","International Relations","Public Administration","Social Work","Geography","Journalism","Broadcasting"],
+  "Faculty of Arts & Humanities":["English Language","Linguistics","History","Philosophy","Religious Studies","Theatre Arts","Music","Fine & Applied Arts","French","Arabic","Yoruba","Hausa","Igbo"],
+  "Faculty of Law":["Law (LLB)","Islamic Law","International Law","Commercial Law"],
+  "Faculty of Agriculture":["Agricultural Science","Animal Science","Crop Science","Fisheries & Aquaculture","Forestry & Wildlife","Soil Science","Agricultural Economics","Food Science & Technology"],
+  "Faculty of Education":["Education & Biology","Education & Chemistry","Education & Physics","Education & Mathematics","Education & English","Early Childhood Education","Educational Administration","Guidance & Counselling","Physical & Health Education","Special Education","Library & Information Science"],
+  "Faculty of Management Sciences":["Accounting","Business Administration","Finance","Banking & Finance","Marketing","Human Resource Management","Entrepreneurship","Insurance","Actuarial Science","Office Technology & Management","Tourism & Hospitality"],
+  "Faculty of Environmental Sciences":["Architecture","Urban & Regional Planning","Estate Management","Quantity Surveying","Building Technology","Surveying & Geoinformatics"]
+};
+const STATES=["Abia","Adamawa","Akwa Ibom","Anambra","Bauchi","Bayelsa","Benue","Borno","Cross River","Delta","Ebonyi","Edo","Ekiti","Enugu","FCT","Gombe","Imo","Jigawa","Kaduna","Kano","Katsina","Kebbi","Kogi","Kwara","Lagos","Nasarawa","Niger","Ogun","Ondo","Osun","Oyo","Plateau","Rivers","Sokoto","Taraba","Yobe","Zamfara"];
+const COURSES_DATA=[
+  {code:"CSC 111",title:"Intro to Computing",units:2,lec:"Dr. Obi",sem:"1st"},
+  {code:"COS 101",title:"Intro to Computer Science",units:3,lec:"Dr. Eze",sem:"1st"},
+  {code:"GST 111",title:"Use of English",units:2,lec:"Mr. Adamu",sem:"1st"},
+  {code:"MTH 101",title:"Calculus I",units:4,lec:"Prof. Taiwo",sem:"1st"},
+  {code:"CSC 201",title:"Data Structures",units:3,lec:"Dr. Amaka",sem:"2nd"},
+  {code:"ENG 202",title:"Technical Writing",units:2,lec:"Mrs. Alabi",sem:"2nd"},
+];
+const TER_DATA=[
+  {id:1,type:"Past Question",course:"CSC 201",year:"2023/2024",title:"First Semester Past Question",upl:"Dr. Amaka Obi"},
+  {id:2,type:"Note",course:"MTH 101",year:"2024/2025",title:"Calculus Week 3 Notes",upl:"Prof. Ade Taiwo"},
+  {id:3,type:"Past Question",course:"MTH 101",year:"2022/2023",title:"Second Semester Past Question",upl:"Prof. Ade Taiwo"},
+  {id:4,type:"Note",course:"ENG 202",year:"2024/2025",title:"Technical Report Writing Guide",upl:"Mrs. Funmi Alabi"},
+  {id:5,type:"JAMB",course:"General",year:"2023",title:"JAMB Past Questions 2023",upl:"CampusRoom"},
+];
+const REELS=[
+  {title:"Intro to Data Structures",upl:"Dr. Amaka Obi",course:"CSC 201",dur:"14:22",bg:"linear-gradient(160deg,#1a0033,#7B00FF)",ico:"💻",views:"1.2k",likes:88},
+  {title:"Matriculation Ceremony 2025",upl:"CampusRoom TV",course:"Event",dur:"8:05",bg:"linear-gradient(160deg,#0f0020,#4C1D95)",ico:"🎓",views:"3.8k",likes:312},
+  {title:"How to Solve Calculus Limits",upl:"Prof. Ade Taiwo",course:"MTH 101",dur:"22:10",bg:"linear-gradient(160deg,#0d1b2a,#1b4332)",ico:"📐",views:"2.1k",likes:175},
+  {title:"Technical Writing Tips",upl:"Mrs. Funmi Alabi",course:"ENG 202",dur:"11:47",bg:"linear-gradient(160deg,#3d0000,#CC1133)",ico:"✍️",views:"956",likes:64},
+  {title:"Campus Tour",upl:"CampusRoom TV",course:"Campus Life",dur:"6:30",bg:"linear-gradient(160deg,#1a0033,#9B30FF)",ico:"🏫",views:"4.5k",likes:421}
+];
+const REMO={Aspirant:"🎓",Student:"📚",Lecturer:"👨‍🏫",Alumni:"🏅"};
+const SAMPLE_CONTACTS=[
+  {id:"support",name:"CampusRoom Support",av:"🏫",online:true,prev:"Welcome to CampusRoom!",time:"Now",unread:1,cat:"All",msgs:[{f:"them",t:"👋 Welcome to CampusRoom! You can now connect with students, lecturers and alumni across Nigeria. Enjoy!",tm:"Now"}]},
+];
+
+/* ══ STATE ══ */
+let CU=null,regRole="",regStep=1,regIType="",hasBiz=null;
+let contacts=[...SAMPLE_CONTACTS];
+let activeChat=null,chatFilter="All";
+let postImgUrl=null;
+let unsubPosts=null;
+
+/* ══ INIT ══ */
+(function(){
+  STATES.forEach(s=>{const o=document.createElement("option");o.value=s;o.textContent=s;document.getElementById("r-state").appendChild(o);});
+  for(let y=2005;y<=2025;y++){const o=document.createElement("option");o.value=y;o.textContent=y;document.getElementById("r-grad").appendChild(o);}
+
+  // Safety timeout — if Firebase takes too long just show landing
+  const loadTimeout = setTimeout(()=>{
+    document.getElementById("loading").style.display="none";
+    show("pg-land");
+  }, 6000);
+
+  // Check auth state
+  auth.onAuthStateChanged(user=>{
+    clearTimeout(loadTimeout);
+    document.getElementById("loading").style.display="none";
+    if(user && user.emailVerified){
+      loadUserProfile(user);
+    } else if(user && !user.emailVerified){
+      show("pg-register");
+      regStep=6;
+      renderRegStep();
+      document.getElementById("r-email-show").textContent=user.email;
+      document.getElementById("r-nav-btns").style.display="none";
+    } else {
+      show("pg-land");
+    }
+  });
+})();
+
+/* ══ TOAST ══ */
+function showToast(msg){
+  const t=document.getElementById("toast");
+  t.textContent=msg;t.classList.add("show");
+  setTimeout(()=>t.classList.remove("show"),3000);
+}
+
+/* ══ PAGE NAV ══ */
+function show(id){
+  document.querySelectorAll(".page").forEach(p=>{p.classList.remove("show");p.style.display="none";});
+  const el=document.getElementById(id);el.classList.add("show");el.style.display="flex";
+}
+
+/* ══ FIREBASE AUTH — LOGIN ══ */
+async function doLogin(){
+  const email=document.getElementById("l-email").value.trim();
+  const pw=document.getElementById("l-pw").value;
+  const err=document.getElementById("l-err");
+  if(!email||!pw){err.textContent="Fill all fields.";err.classList.add("show");return;}
+  err.classList.remove("show");
+  try{
+    showToast("⏳ Signing in…");
+    await auth.signInWithEmailAndPassword(email,pw);
+    // onAuthStateChanged handles the rest
+  }catch(e){
+    err.textContent=e.message.replace("Firebase:","").replace(/\(.*\)/,"").trim();
+    err.classList.add("show");
+  }
+}
+
+/* ══ LOAD USER PROFILE ══ */
+async function loadUserProfile(user){
+  try{
+    const doc=await db.collection("users").doc(user.uid).get();
+    if(doc.exists){
+      CU={uid:user.uid,email:user.email,...doc.data()};
+    } else {
+      CU={uid:user.uid,email:user.email,name:user.email.split("@")[0],role:"Student",inst:"",photoURL:""};
+    }
+    startApp();
+  }catch(e){
+    CU={uid:user.uid,email:user.email,name:user.email.split("@")[0],role:"Student",inst:"",photoURL:""};
+    startApp();
+  }
+}
+
+/* ══ REGISTER ══ */
+function pickIType(t){
+  regIType=t;
+  document.querySelectorAll(".itype").forEach(b=>b.classList.toggle("sel",b.querySelector(".il").textContent.startsWith(t.substring(0,4))));
+  const sel=document.getElementById("r-inst");sel.innerHTML="<option value=''>-- Select institution --</option>";
+  (INST[t]||[]).forEach(i=>{const o=document.createElement("option");o.value=i;o.textContent=i;sel.appendChild(o);});
+  const fsel=document.getElementById("r-faculty");fsel.innerHTML="<option value=''>-- Select faculty --</option>";
+  Object.keys(FACULTIES).forEach(f=>{const o=document.createElement("option");o.value=f;o.textContent=f;fsel.appendChild(o);});
+  document.getElementById("r-dept").innerHTML="<option value=''>-- Select department --</option>";
+}
+function loadDepts(){
+  const fac=document.getElementById("r-faculty").value;
+  const dsel=document.getElementById("r-dept");dsel.innerHTML="<option value=''>-- Select department --</option>";
+  (FACULTIES[fac]||[]).forEach(d=>{const o=document.createElement("option");o.value=d;o.textContent=d;dsel.appendChild(o);});
+}
+function pickRole(r){
+  regRole=r;
+  document.querySelectorAll(".rcard").forEach(c=>c.classList.toggle("sel",c.querySelector(".rn").textContent===r));
+}
+function setBiz(val){
+  hasBiz=val;
+  document.getElementById("biz-yes").classList.toggle("sel",val===true);
+  document.getElementById("biz-no").classList.toggle("sel",val===false);
+  document.getElementById("biz-fields").style.display=val?"block":"none";
+}
+
+async function rNext(){
+  const err=document.getElementById("r-err");err.classList.remove("show");
+  if(regStep===1){if(!regIType){err.textContent="Select institution type.";err.classList.add("show");return;}}
+  if(regStep===2){
+    if(!document.getElementById("r-inst").value||!document.getElementById("r-faculty").value||!document.getElementById("r-dept").value){
+      err.textContent="Select institution, faculty and department.";err.classList.add("show");return;
+    }
+  }
+  if(regStep===3){if(!regRole){err.textContent="Select a role.";err.classList.add("show");return;}
+    ["aspirant","student","lecturer","alumni"].forEach(r=>document.getElementById("ra-"+r).style.display="none");
+    document.getElementById("ra-"+regRole.toLowerCase()).style.display="block";
+  }
+  if(regStep===4){
+    if(!document.getElementById("r-name").value.trim()||!document.getElementById("r-dob").value||!document.getElementById("r-state").value||!document.getElementById("r-email").value.trim()){
+      err.textContent="Fill all required fields.";err.classList.add("show");return;
+    }
+  }
+  if(regStep===5){
+    const pw=document.getElementById("r-pw").value;
+    const pw2=document.getElementById("r-pw2").value;
+    if(!pw||pw.length<8){err.textContent="Password must be at least 8 characters.";err.classList.add("show");return;}
+    if(pw!==pw2){err.textContent="Passwords don't match.";err.classList.add("show");return;}
+    // Create Firebase account
+    const email=document.getElementById("r-email").value.trim();
+    const name=document.getElementById("r-name").value.trim();
+    try{
+      showToast("⏳ Creating account…");
+      const cred=await auth.createUserWithEmailAndPassword(email,pw);
+      const user=cred.user;
+      // Update display name
+      await user.updateProfile({displayName:name});
+      // Send verification email
+      await user.sendEmailVerification();
+      // Save to Firestore
+      const biz=hasBiz?{
+        bizName:document.getElementById("r-biz-name").value,
+        bizType:document.getElementById("r-biz-type").value,
+        bizDesc:document.getElementById("r-biz-desc").value
+      }:null;
+      await db.collection("users").doc(user.uid).set({
+        name,email,role:regRole,
+        inst:document.getElementById("r-inst").value,
+        faculty:document.getElementById("r-faculty").value,
+        dept:document.getElementById("r-dept").value,
+        state:document.getElementById("r-state").value,
+        phone:document.getElementById("r-phone").value,
+        dob:document.getElementById("r-dob").value,
+        itype:regIType,
+        biz:biz||null,
+        photoURL:"",
+        createdAt:firebase.firestore.FieldValue.serverTimestamp()
+      });
+      document.getElementById("r-email-show").textContent=email;
+      regStep=6;renderRegStep();
+      document.getElementById("r-nav-btns").style.display="none";
+      return;
+    }catch(e){
+      err.textContent=e.message.replace("Firebase:","").replace(/\(.*\)/,"").trim();
+      err.classList.add("show");return;
+    }
+  }
+  if(regStep===6){checkVerified();return;}
+  regStep++;renderRegStep();
+}
+
+function rBack(){if(regStep>1&&regStep<6)regStep--;renderRegStep();}
+function renderRegStep(){
+  const labels=["Institution Type","Choose Institution","Your Role","Personal Info","Security Setup","Verify Email"];
+  document.getElementById("rstep-lbl").textContent="Step "+regStep+" of 6 — "+labels[regStep-1];
+  document.querySelectorAll(".step").forEach(s=>s.classList.remove("on"));
+  document.getElementById("rs"+regStep).classList.add("on");
+  document.getElementById("r-back").style.display=regStep===1||regStep===6?"none":"inline-flex";
+  const nxt=document.getElementById("r-next");
+  if(regStep===5)nxt.textContent="Create Account →";
+  else if(regStep===6)nxt.textContent="✓ I've Verified My Email";
+  else nxt.textContent="Continue →";
+}
+
+async function checkVerified(){
+  showToast("⏳ Checking verification…");
+  await auth.currentUser?.reload();
+  if(auth.currentUser?.emailVerified){
+    showToast("✅ Email verified! Welcome to CampusRoom!");
+    await loadUserProfile(auth.currentUser);
+  } else {
+    showToast("❌ Email not verified yet. Check your inbox.");
+  }
+}
+
+async function resendVerification(){
+  try{
+    await auth.currentUser?.sendEmailVerification();
+    showToast("✅ Verification email resent!");
+  }catch(e){showToast("❌ "+e.message);}
+}
+
+/* ══ START APP ══ */
+function startApp(){
+  // Update UI with user data
+  document.getElementById("tb-role").textContent=CU.role||"Student";
+  const emoji=REMO[CU.role]||"👤";
+  document.getElementById("prof-av-emoji").textContent=emoji;
+  document.getElementById("compose-av").innerHTML=emoji;
+  document.getElementById("prof-name").textContent=CU.name||"User";
+  document.getElementById("prof-email").textContent=CU.email||"";
+  document.getElementById("prof-role").textContent=CU.role||"Student";
+  document.getElementById("prof-inst").textContent=CU.inst?"🏛️ "+CU.inst:"";
+  const bizEl=document.getElementById("prof-biz");
+  if(CU.biz&&CU.biz.bizName){bizEl.textContent="💼 "+CU.biz.bizName+" · "+CU.biz.bizType;bizEl.style.display="block";}
+  // Load profile pic if exists
+  if(CU.photoURL){
+    document.getElementById("prof-av-img").src=CU.photoURL;
+    document.getElementById("prof-av-img").style.display="block";
+    document.getElementById("prof-av-emoji").style.display="none";
+    document.getElementById("compose-av").innerHTML=`<img src="${CU.photoURL}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">`;
+  }
+  const isLec=CU.role==="Lecturer";
+  document.getElementById("up-btn").style.display=isLec?"inline-flex":"none";
+  // Update stats
+  document.getElementById("stat-courses").textContent=COURSES_DATA.length;
+  document.getElementById("stat-ter").textContent=TER_DATA.length;
+  document.getElementById("stat-chats").textContent=contacts.length;
+  // Build screens
+  buildReels();buildCourses();buildTERList("All");buildContacts(contacts);
+  // Load real posts
+  loadPosts();
+  // Show app
+  document.querySelectorAll(".page").forEach(p=>{p.classList.remove("show");p.style.display="none";});
+  const app=document.getElementById("pg-app");app.classList.add("show");app.style.display="flex";
+  goTab("home");
+}
+
+/* ══ LOGOUT ══ */
+async function doLogout(){
+  if(unsubPosts)unsubPosts();
+  await auth.signOut();
+  CU=null;contacts=[...SAMPLE_CONTACTS];
+  const app=document.getElementById("pg-app");app.classList.remove("show");app.style.display="none";
+  regStep=1;regRole="";regIType="";hasBiz=null;
+  document.querySelectorAll(".step").forEach(s=>s.classList.remove("on"));
+  document.getElementById("rs1").classList.add("on");
+  document.getElementById("rstep-lbl").textContent="Step 1 of 6 — Institution Type";
+  document.getElementById("r-back").style.display="none";
+  document.getElementById("r-next").textContent="Continue →";
+  document.getElementById("r-nav-btns").style.display="flex";
+  show("pg-land");
+}
+
+/* ══ PROFILE PIC UPLOAD ══ */
+async function uploadProfilePic(input){
+  const file=input.files[0];if(!file)return;
+  const prog=document.getElementById("pic-progress");
+  prog.style.display="block";prog.textContent="⏳ Uploading picture…";
+  try{
+    const fd=new FormData();
+    fd.append("file",file);
+    fd.append("upload_preset",UPLOAD_PRESET);
+    fd.append("folder","profilePics");
+    const res=await fetch(CLOUD_URL,{method:"POST",body:fd});
+    const data=await res.json();
+    const url=data.secure_url;
+    // Update Firestore
+    await db.collection("users").doc(CU.uid).update({photoURL:url});
+    CU.photoURL=url;
+    // Update UI
+    const img=document.getElementById("prof-av-img");
+    img.src=url;img.style.display="block";
+    document.getElementById("prof-av-emoji").style.display="none";
+    document.getElementById("compose-av").innerHTML=`<img src="${url}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">`;
+    prog.textContent="✅ Profile picture updated!";
+    setTimeout(()=>{prog.style.display="none";},3000);
+    showToast("✅ Profile picture updated!");
+  }catch(e){
+    prog.textContent="❌ Upload failed. Try again.";
+    showToast("❌ Upload failed");
+  }
+}
+
+/* ══ POSTS — Real Firestore ══ */
+function loadPosts(){
+  const scroll=document.getElementById("feed-scroll");
+  // Real-time listener
+  if(unsubPosts)unsubPosts();
+  unsubPosts=db.collection("posts")
+    .orderBy("createdAt","desc")
+    .limit(20)
+    .onSnapshot(snap=>{
+      if(snap.empty){
+        scroll.innerHTML=`<div style="text-align:center;padding:40px 20px;color:var(--muted);"><div style="font-size:40px;margin-bottom:12px;">📢</div><p style="font-family:'Space Grotesk',sans-serif;font-weight:700;">No posts yet</p><p style="font-size:13px;margin-top:8px;">Be the first to post!</p></div>`;
+        document.getElementById("stat-posts").textContent="0";
+        return;
+      }
+      scroll.innerHTML="";
+      document.getElementById("stat-posts").textContent=snap.size;
+      snap.forEach(doc=>{
+        const p={id:doc.id,...doc.data()};
+        const div=document.createElement("div");div.className="feed-post";
+        const time=p.createdAt?.toDate?formatTime(p.createdAt.toDate()):"Just now";
+        const picHTML=p.photoURL?`<img src="${p.photoURL}" class="fp-av">`:
+          `<div class="fp-av">${REMO[p.role]||"👤"}</div>`;
+        const imgHTML=p.imgURL?`<img src="${p.imgURL}" class="fp-img">`:""
+        div.innerHTML=`
+          <div class="fp-head">
+            ${picHTML}
+            <div style="flex:1"><div class="fp-name">${p.name||"User"}</div><div class="fp-meta">${p.role||""} · ${time}</div></div>
+            <span class="pill">${p.inst?p.inst.split(",")[0]:"Campus"}</span>
+          </div>
+          ${imgHTML}
+          <p class="fp-txt">${p.text||""}</p>
+          <div class="fp-acts">
+            <button class="lbtn" data-id="${doc.id}" data-likes="${p.likes||0}"><span class="fic">🤍</span><span class="lc">${p.likes||0}</span></button>
+            <button><span class="fic">💬</span>${p.comments||0}</button>
+            <button><span class="fic">↗️</span>Share</button>
+          </div>`;
+        div.querySelector(".lbtn").addEventListener("click",function(){
+          const id=this.dataset.id;
+          const lk=this.classList.toggle("lk");
+          this.querySelector(".fic").textContent=lk?"❤️":"🤍";
+          const c=this.querySelector(".lc");
+          const n=parseInt(c.textContent)+(lk?1:-1);
+          c.textContent=n;
+          db.collection("posts").doc(id).update({likes:n});
+        });
+        scroll.appendChild(div);
+      });
+    },err=>{
+      scroll.innerHTML=`<div style="text-align:center;padding:40px 20px;color:var(--muted);"><p>Could not load posts</p></div>`;
+    });
+}
+
+function formatTime(date){
+  const now=new Date();const diff=(now-date)/1000;
+  if(diff<60)return"Just now";
+  if(diff<3600)return Math.floor(diff/60)+"m ago";
+  if(diff<86400)return Math.floor(diff/3600)+"h ago";
+  return Math.floor(diff/86400)+"d ago";
+}
+
+/* ══ COMPOSE POST ══ */
+function openCompose(){
+  if(!CU)return;
+  const modal=document.getElementById("compose-modal");
+  const nameEl=document.getElementById("compose-modal-name");
+  const roleEl=document.getElementById("compose-modal-role");
+  const avEl=document.getElementById("compose-modal-av");
+  nameEl.textContent=CU.name||"User";
+  roleEl.textContent=CU.role||"Student";
+  if(CU.photoURL){avEl.innerHTML=`<img src="${CU.photoURL}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">`;}
+  else{avEl.textContent=REMO[CU.role]||"👤";}
+  modal.classList.add("show");
+}
+function closeCompose(){
+  document.getElementById("compose-modal").classList.remove("show");
+  document.getElementById("post-text").value="";
+  document.getElementById("post-img-preview").style.display="none";
+  postImgUrl=null;
+}
+function previewPostImg(input){
+  const file=input.files[0];if(!file)return;
+  const reader=new FileReader();
+  reader.onload=e=>{
+    const prev=document.getElementById("post-img-preview");
+    prev.src=e.target.result;prev.style.display="block";
+  };
+  reader.readAsDataURL(file);
+}
+async function submitPost(){
+  const text=document.getElementById("post-text").value.trim();
+  if(!text){showToast("❌ Write something first!");return;}
+  showToast("⏳ Posting…");
+  let imgURL="";
+  const imgFile=document.getElementById("post-img-file").files[0];
+  if(imgFile){
+    try{
+      const fd=new FormData();
+      fd.append("file",imgFile);fd.append("upload_preset",UPLOAD_PRESET);fd.append("folder","posts");
+      const res=await fetch(CLOUD_URL,{method:"POST",body:fd});
+      const data=await res.json();imgURL=data.secure_url;
+    }catch(e){showToast("❌ Image upload failed");}
+  }
+  try{
+    await db.collection("posts").add({
+      text,imgURL,
+      name:CU.name||"User",
+      role:CU.role||"Student",
+      inst:CU.inst||"",
+      photoURL:CU.photoURL||"",
+      uid:CU.uid,
+      likes:0,comments:0,
+      createdAt:firebase.firestore.FieldValue.serverTimestamp()
+    });
+    closeCompose();
+    showToast("✅ Post shared!");
+  }catch(e){showToast("❌ Failed to post. Try again.");}
+}
+
+/* ══ TAB NAV ══ */
+function goTab(t){
+  document.querySelectorAll(".tab").forEach(el=>{el.classList.remove("on");el.style.display="none";});
+  const el=document.getElementById("tab-"+t);el.classList.add("on");
+  if(t==="chat"){el.style.display="flex";el.style.flexDirection="column";el.style.height="100%";}
+  else if(t==="home"){el.style.display="flex";}
+  else el.style.display="block";
+  document.querySelectorAll(".nb").forEach(b=>b.classList.toggle("on",b.dataset.t===t));
+}
+
+/* ══ FEED TABS ══ */
+function switchFeedTab(el){document.querySelectorAll(".ftab").forEach(t=>t.classList.remove("on"));el.classList.add("on");}
+
+/* ══ REELS ══ */
+function buildReels(){
+  const sw=document.getElementById("reels-sw"),sd=document.getElementById("reels-dots");
+  const H=window.innerHeight-116;sw.innerHTML="";sd.innerHTML="";
+  REELS.forEach((r,i)=>{
+    const el=document.createElement("div");el.className="si rc";
+    el.style.cssText=`height:${H}px;width:100%;background:${r.bg};align-items:center;justify-content:center;`;
+    el.innerHTML=`<div class="rbg">${r.ico}</div><div class="rply" style="display:${i===0?"flex":"none"}">▶</div>
+      <div class="rg"><span class="pill">${r.course}</span><div class="rtit">${r.title}</div><div class="rupl">${r.upl}</div>
+        <div class="rbr"><div class="rmt">👁 ${r.views} · 🕐 ${r.dur}</div>
+          <div class="racts">
+            <button class="rlb"><span class="ric2">🤍</span><span class="rlc">${r.likes}</span></button>
+            <button><span class="ric2">💬</span>Comment</button>
+            <button><span class="ric2">↗️</span>Share</button>
+          </div>
+        </div>
+      </div>`;
+    el.querySelector(".rlb").addEventListener("click",function(e){
+      e.stopPropagation();const lk=this.classList.toggle("lk");
+      this.querySelector(".ric2").textContent=lk?"❤️":"🤍";
+      const c=this.querySelector(".rlc");c.textContent=parseInt(c.textContent)+(lk?1:-1);
+    });
+    sw.appendChild(el);
+    const dot=document.createElement("div");dot.className="sdot"+(i===0?" on":"");
+    dot.addEventListener("click",()=>sw.scrollTo({top:i*H,behavior:"smooth"}));
+    sd.appendChild(dot);
+  });
+  sw.addEventListener("scroll",()=>{
+    const idx=Math.round(sw.scrollTop/(window.innerHeight-116));
+    sd.querySelectorAll(".sdot").forEach((d,i)=>d.classList.toggle("on",i===idx));
+    sw.querySelectorAll(".rply").forEach((p,i)=>p.style.display=i===idx?"flex":"none");
+  },{passive:true});
+}
+
+/* ══ TER ══ */
+function switchTER(t){
+  document.querySelectorAll(".stb").forEach(b=>b.classList.remove("on"));document.getElementById("stb-"+t).classList.add("on");
+  document.querySelectorAll(".tp").forEach(p=>p.classList.remove("on"));document.getElementById("tp-"+t).classList.add("on");
+}
+function buildCourses(){
+  const grid=document.getElementById("course-grid");grid.innerHTML="";
+  COURSES_DATA.forEach(c=>{
+    const d=document.createElement("div");d.className="ccard";
+    d.innerHTML=`<div class="ccode">${c.code}</div><div class="ctitle2">${c.title}</div><div class="cunits">${c.units} Units · ${c.lec}</div>`;
+    grid.appendChild(d);
+  });
+}
+function setF(f){document.querySelectorAll(".fb").forEach(b=>b.classList.toggle("on",b.dataset.f===f));buildTERList(f);}
+function buildTERList(f){
+  const list=document.getElementById("file-list");list.innerHTML="";
+  const tc={"Past Question":"#9B30FF","Note":"#B86EFF","JAMB":"#fbbf24"};
+  const ti={"Past Question":"📝","Note":"📄","JAMB":"🎯"};
+  (f==="All"?TER_DATA:TER_DATA.filter(x=>x.type===f)).forEach(r=>{
+    const d=document.createElement("div");d.className="card fcd";
+    const c=tc[r.type]||"var(--plight)";
+    d.innerHTML=`<span class="fci">${ti[r.type]||"📄"}</span>
+      <div style="flex:1">
+        <div class="ftgs"><span class="pill" style="color:${c};border-color:${c}44;background:${c}18">${r.type}</span><span class="pill">${r.course}</span></div>
+        <div class="ftt">${r.title}</div><div class="fmt">${r.year} · ${r.upl}</div>
+      </div>
+      <button class="btn btn-g" style="font-size:11px;padding:6px 11px;flex-shrink:0">View</button>`;
+    list.appendChild(d);
+  });
+}
+
+/* ══ CHAT — Real-time Firestore ══ */
+function switchChatFilter(el,f){
+  document.querySelectorAll(".cftab").forEach(t=>t.classList.remove("on"));el.classList.add("on");chatFilter=f;
+  const filtered=f==="All"?contacts:contacts.filter(c=>c.cat===f||(f==="Unread"&&c.unread>0));
+  buildContacts(filtered);
+}
+function buildContacts(list){
+  const el=document.getElementById("clist");el.innerHTML="";
+  if(list.length===0){
+    el.innerHTML=`<div style="text-align:center;padding:40px 20px;color:var(--muted);"><p>No contacts found</p></div>`;return;
+  }
+  list.forEach(c=>{
+    const item=document.createElement("div");item.className="ci";
+    const avHTML=c.photoURL?`<img src="${c.photoURL}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">`:`<span>${c.av}</span>`;
+    item.innerHTML=`
+      <div class="cav-wrap">${avHTML}${c.online?'<div class="odot"></div>':""}</div>
+      <div class="cin"><div class="cn">${c.name}</div><div class="cp">${c.prev||""}</div></div>
+      <div class="crt"><span class="ctm">${c.time||""}</span>${c.unread>0?`<span class="ub2">${c.unread}</span>`:""}</div>`;
+    item.addEventListener("click",()=>openChat(c.id));el.appendChild(item);
+  });
+}
+function searchC(v){buildContacts(contacts.filter(c=>c.name.toLowerCase().includes(v.toLowerCase())));}
+function openChat(id){
+  activeChat=contacts.find(c=>c.id===id);if(!activeChat)return;
+  activeChat.unread=0;buildContacts(contacts);
+  const avEl=document.getElementById("cw-av");
+  if(activeChat.photoURL){avEl.innerHTML=`<img src="${activeChat.photoURL}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">`;}
+  else{avEl.innerHTML=activeChat.av||"👤";}
+  document.getElementById("cw-name").textContent=activeChat.name;
+  document.getElementById("cw-st").textContent=activeChat.online?"Online":"Offline";
+  document.getElementById("cw-st").style.color=activeChat.online?"#22c55e":"var(--muted)";
+  renderMsgs();
+  document.getElementById("pn-contacts").style.display="none";
+  const cw=document.getElementById("pn-cw");cw.style.display="flex";cw.style.flexDirection="column";cw.style.height="100%";
+  setTimeout(()=>{const e=document.getElementById("msgs");e.scrollTop=e.scrollHeight;},60);
+}
+function closeChat(){
+  document.getElementById("pn-cw").style.display="none";
+  const pc=document.getElementById("pn-contacts");pc.style.display="flex";pc.style.flexDirection="column";pc.style.height="100%";
+}
+function renderMsgs(){
+  const el=document.getElementById("msgs");el.innerHTML="";
+  (activeChat.msgs||[]).forEach(m=>{
+    const row=document.createElement("div");row.className="mr"+(m.f==="me"?" me":"");
+    const avHTML=m.f!=="me"?(activeChat.photoURL?`<div class="msm"><img src="${activeChat.photoURL}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;"></div>`:`<div class="msm">${activeChat.av||"👤"}</div>`):"";
+    row.innerHTML=`${avHTML}<div><div class="mb">${m.t}</div><div class="mt">${m.tm}</div></div>`;
+    el.appendChild(row);
+  });
+  setTimeout(()=>{const e=document.getElementById("msgs");e.scrollTop=e.scrollHeight;},50);
+}
+function sendMsg(){
+  const inp=document.getElementById("minp"),txt=inp.value.trim();
+  if(!txt||!activeChat)return;
+  const now=new Date(),tm=now.getHours().toString().padStart(2,"0")+":"+now.getMinutes().toString().padStart(2,"0");
+  if(!activeChat.msgs)activeChat.msgs=[];
+  activeChat.msgs.push({f:"me",t:txt,tm});
+  activeChat.prev=txt;activeChat.time="Just now";
+  inp.value="";renderMsgs();buildContacts(contacts);
+  // Auto reply for demo contacts
+  if(activeChat.id==="support"){
+    setTimeout(()=>{
+      const reps=["Thanks for reaching out! How can we help you?","We're here for you 24/7 😊","Check our Help section for more info!","Your feedback helps us improve CampusRoom!"];
+      const rep=reps[Math.floor(Math.random()*reps.length)];
+      activeChat.msgs.push({f:"them",t:rep,tm});
+      activeChat.prev=rep;renderMsgs();buildContacts(contacts);
+    },1200);
+  }
+}
+
+window.addEventListener("resize",()=>{if(CU)buildReels();});
+</script>
+</body>
+</html>
