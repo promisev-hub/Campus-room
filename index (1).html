@@ -1,0 +1,1092 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>CampusRoom</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700;800&family=Inter:wght@400;500&display=swap');
+
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+html,body{height:100%;overflow:hidden;}
+body{background:#08050F;color:#F5F0FF;font-family:'Inter',sans-serif;-webkit-tap-highlight-color:transparent;}
+input,select,textarea{outline:none;font-family:inherit;}
+button{cursor:pointer;border:none;background:none;font-family:inherit;}
+::-webkit-scrollbar{width:0;height:0;}
+
+/* ── COLOUR SYSTEM (deep glossy purple + red touch + white) ── */
+:root{
+  --bg:#08050F;
+  --bg2:#0F0818;
+  --surface:#160D24;
+  --card:#1E1230;
+  --border:#3B2060;
+  --purple:#6B00E6;
+  --purple2:#8B1FFF;
+  --purple3:#A855F7;
+  --purpleLight:#C084FC;
+  --purpleGlow:#5500BB;
+  --red:#CC2244;
+  --redLight:#FF4466;
+  --white:#FFFFFF;
+  --offwhite:#F5F0FF;
+  --muted:#8B7AAA;
+  --glass:rgba(107,0,230,.15);
+  --glassBorder:rgba(168,85,247,.3);
+}
+
+/* PAGE SYSTEM */
+.page{position:fixed;inset:0;background:var(--bg);display:none;overflow-y:auto;z-index:5;}
+.page.show{display:flex;flex-direction:column;}
+
+/* SHARED COMPONENTS */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:11px 24px;border-radius:12px;font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:14px;border:none;cursor:pointer;transition:all .2s;letter-spacing:.3px;}
+.btn:active{transform:scale(.97);}
+.btn-p{background:linear-gradient(135deg,var(--purple),var(--purple2));color:#fff;box-shadow:0 4px 20px rgba(107,0,230,.4);}
+.btn-p:hover{box-shadow:0 4px 28px rgba(107,0,230,.6);}
+.btn-r{background:linear-gradient(135deg,var(--red),var(--redLight));color:#fff;box-shadow:0 4px 16px rgba(204,34,68,.35);}
+.btn-g{background:var(--glass);color:var(--purpleLight);border:1px solid var(--glassBorder);backdrop-filter:blur(8px);}
+.btn-d{background:rgba(204,34,68,.2);color:#FF7799;border:1px solid rgba(204,34,68,.3);}
+.btn-w{width:100%;}
+
+.field{margin-bottom:14px;}
+.field label{display:block;font-size:12px;color:var(--muted);margin-bottom:6px;font-family:'Space Grotesk',sans-serif;font-weight:600;letter-spacing:.5px;text-transform:uppercase;}
+.field input,.field select{
+  width:100%;padding:12px 16px;
+  background:rgba(255,255,255,.04);
+  border:1px solid var(--border);
+  border-radius:12px;color:var(--offwhite);font-size:14px;
+  transition:border-color .2s;
+}
+.field input:focus,.field select:focus{border-color:var(--purple3);}
+.field select option{background:#1E1230;color:#F5F0FF;}
+
+.err{color:#FF7799;font-size:13px;margin-bottom:10px;display:none;padding:8px 12px;background:rgba(204,34,68,.1);border-radius:8px;border:1px solid rgba(204,34,68,.2);}
+.err.show{display:block;}
+.ok{color:#6EE7B7;font-size:13px;margin-bottom:10px;display:none;padding:8px 12px;background:rgba(52,211,153,.1);border-radius:8px;border:1px solid rgba(52,211,153,.2);}
+.ok.show{display:block;}
+
+.card{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:16px;}
+.glass-card{background:var(--glass);border:1px solid var(--glassBorder);border-radius:16px;padding:16px;backdrop-filter:blur(12px);}
+.pill{display:inline-block;padding:3px 10px;border-radius:6px;font-size:12px;font-weight:700;background:rgba(107,0,230,.25);color:var(--purpleLight);border:1px solid rgba(168,85,247,.35);}
+.slbl{font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:11px;color:var(--muted);margin-bottom:10px;letter-spacing:2px;text-transform:uppercase;}
+
+/* ═══════════════════
+   LOGO SVG
+═══════════════════ */
+.cr-logo{
+  width:80px;height:80px;border-radius:22px;margin:0 auto 20px;
+  background:linear-gradient(145deg,#2A0060,#6B00E6,#9B1FFF);
+  display:flex;align-items:center;justify-content:center;
+  box-shadow:0 8px 32px rgba(107,0,230,.6),inset 0 1px 0 rgba(255,255,255,.15);
+  position:relative;overflow:hidden;
+}
+.cr-logo::before{
+  content:'';position:absolute;inset:0;
+  background:linear-gradient(135deg,rgba(255,255,255,.15) 0%,transparent 60%);
+  border-radius:inherit;
+}
+.cr-logo-inner{position:relative;z-index:1;text-align:center;}
+.cr-logo-text{font-family:'Space Grotesk',sans-serif;font-weight:800;font-size:22px;color:#fff;letter-spacing:-1px;line-height:1;}
+.cr-logo-sub{font-size:8px;font-weight:700;color:rgba(255,255,255,.6);letter-spacing:2px;text-transform:uppercase;margin-top:2px;}
+.cr-logo-dot{width:6px;height:6px;border-radius:50%;background:var(--redLight);margin:3px auto 0;box-shadow:0 0 6px var(--redLight);}
+
+/* top bar logo (small) */
+.cr-logo-sm{
+  width:36px;height:36px;border-radius:10px;
+  background:linear-gradient(145deg,#2A0060,#6B00E6,#9B1FFF);
+  display:flex;align-items:center;justify-content:center;
+  box-shadow:0 4px 12px rgba(107,0,230,.5);
+  font-family:'Space Grotesk',sans-serif;font-weight:800;font-size:13px;color:#fff;
+  flex-shrink:0;
+}
+
+/* ═══════════════════
+   LANDING
+═══════════════════ */
+#pg-land{align-items:center;justify-content:center;text-align:center;padding:32px 24px;position:relative;}
+.glow1{position:fixed;width:500px;height:500px;border-radius:50%;background:radial-gradient(circle,rgba(107,0,230,.4) 0%,transparent 65%);top:-10%;left:50%;transform:translateX(-50%);pointer-events:none;animation:pulse 4s ease-in-out infinite;}
+.glow2{position:fixed;width:300px;height:300px;border-radius:50%;background:radial-gradient(circle,rgba(204,34,68,.2) 0%,transparent 65%);bottom:10%;right:-10%;pointer-events:none;animation:pulse 4s ease-in-out infinite .5s;}
+@keyframes pulse{0%,100%{opacity:.7;transform:translateX(-50%) scale(1);}50%{opacity:1;transform:translateX(-50%) scale(1.05);}}
+.glow2{animation:pulse2 4s ease-in-out infinite .5s;}
+@keyframes pulse2{0%,100%{opacity:.5;transform:scale(1);}50%{opacity:.8;transform:scale(1.08);}}
+
+.land-h{font-family:'Space Grotesk',sans-serif;font-size:clamp(2.2rem,9vw,3.5rem);font-weight:800;line-height:1;margin-bottom:8px;letter-spacing:-1px;}
+.land-h .w{color:#fff;}
+.land-h .p{background:linear-gradient(135deg,var(--purple2),var(--purpleLight));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;}
+.land-h .r{color:var(--redLight);}
+.land-tagline{font-family:'Space Grotesk',sans-serif;font-size:13px;font-weight:600;color:var(--muted);letter-spacing:3px;text-transform:uppercase;margin-bottom:16px;}
+.land-p{color:var(--muted);font-size:15px;line-height:1.7;margin-bottom:36px;max-width:320px;margin-left:auto;margin-right:auto;}
+.land-btns{display:flex;gap:12px;justify-content:center;margin-bottom:32px;flex-wrap:wrap;}
+.chips{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;}
+.chip{background:var(--glass);color:var(--purpleLight);border:1px solid var(--glassBorder);border-radius:20px;padding:6px 14px;font-size:12px;font-weight:600;backdrop-filter:blur(8px);}
+
+/* decorative lines */
+.land-line{width:60px;height:2px;background:linear-gradient(90deg,transparent,var(--purple),transparent);margin:20px auto;border-radius:2px;}
+
+/* ═══════════════════
+   AUTH
+═══════════════════ */
+.auth-pg{align-items:flex-start;justify-content:center;padding:24px 16px 40px;}
+.abox{width:100%;max-width:460px;}
+.ahead{text-align:center;margin-bottom:24px;}
+.ahead h2{font-family:'Space Grotesk',sans-serif;font-size:24px;font-weight:800;margin-bottom:4px;}
+.ahead h2 span{background:linear-gradient(135deg,var(--purple2),var(--purpleLight));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;}
+.ahead p{color:var(--muted);font-size:13px;}
+.acard{background:rgba(30,18,48,.8);border:1px solid var(--border);border-radius:22px;padding:26px;backdrop-filter:blur(20px);}
+.afoot{text-align:center;font-size:13px;color:var(--muted);margin-top:16px;}
+.afoot span{color:var(--purpleLight);cursor:pointer;font-weight:600;}
+
+/* Institution type buttons */
+.itype-row{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:16px;}
+.itype-btn{
+  padding:12px 6px;border-radius:12px;border:1px solid var(--border);
+  background:rgba(255,255,255,.03);text-align:center;cursor:pointer;transition:all .2s;
+}
+.itype-btn.sel{border-color:var(--purple2);background:rgba(107,0,230,.2);box-shadow:0 0 16px rgba(107,0,230,.2);}
+.itype-btn .iem{font-size:22px;margin-bottom:4px;}
+.itype-btn .iln{font-family:'Space Grotesk',sans-serif;font-weight:600;font-size:11px;color:var(--muted);}
+.itype-btn.sel .iln{color:var(--purpleLight);}
+
+/* Role grid */
+.rgrid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px;}
+.rcard{padding:16px 8px;border-radius:14px;border:1px solid var(--border);background:rgba(255,255,255,.03);text-align:center;cursor:pointer;transition:all .2s;}
+.rcard.sel{border-color:var(--purple2);background:rgba(107,0,230,.2);box-shadow:0 0 16px rgba(107,0,230,.15);}
+.rcard .ri{font-size:26px;margin-bottom:4px;}
+.rcard .rn{font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:13px;}
+.rcard.sel .rn{color:var(--purpleLight);}
+
+/* Steps */
+.step{display:none;}
+.step.on{display:block;}
+
+/* Divider */
+.divider{display:flex;align-items:center;gap:12px;margin:16px 0;}
+.divider::before,.divider::after{content:'';flex:1;height:1px;background:var(--border);}
+.divider span{font-size:12px;color:var(--muted);}
+
+/* OTP */
+.otp-row{display:flex;gap:8px;justify-content:center;margin:20px 0;}
+.otp-box{width:46px;height:54px;background:rgba(255,255,255,.04);border:2px solid var(--border);border-radius:12px;color:#fff;font-size:22px;font-weight:700;text-align:center;font-family:'Space Grotesk',sans-serif;transition:border-color .2s;}
+.otp-box:focus{border-color:var(--purple2);box-shadow:0 0 12px rgba(107,0,230,.3);}
+.otp-timer{text-align:center;color:var(--muted);font-size:13px;margin-bottom:14px;}
+.otp-timer span{color:var(--purpleLight);cursor:pointer;font-weight:600;}
+
+/* ═══════════════════
+   APP SHELL
+═══════════════════ */
+#pg-app{display:none;flex-direction:column;overflow:hidden;}
+#pg-app.show{display:flex;}
+#topbar{
+  height:54px;flex-shrink:0;
+  background:rgba(15,8,24,.95);
+  border-bottom:1px solid var(--border);
+  display:flex;align-items:center;justify-content:space-between;
+  padding:0 16px;backdrop-filter:blur(12px);
+}
+.brand{font-family:'Space Grotesk',sans-serif;font-weight:800;font-size:18px;display:flex;align-items:center;gap:8px;}
+.brand-text .w{color:#fff;}
+.brand-text .p{background:linear-gradient(135deg,var(--purple2),var(--purpleLight));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;}
+.brand-text .r{color:var(--redLight);}
+#content{flex:1;overflow:hidden;position:relative;}
+.tab{position:absolute;inset:0;display:none;}
+.tab.on{display:block;}
+#botnav{
+  height:62px;flex-shrink:0;
+  background:rgba(15,8,24,.95);
+  border-top:1px solid var(--border);
+  display:flex;backdrop-filter:blur(12px);
+}
+.nb{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;color:var(--muted);position:relative;transition:color .2s;}
+.nb.on{color:var(--purpleLight);}
+.nb.on::before{content:'';position:absolute;top:0;left:50%;transform:translateX(-50%);width:28px;height:2px;background:linear-gradient(90deg,var(--purple),var(--purpleLight));border-radius:2px;}
+.nb .ni{font-size:20px;}
+.nb .nl{font-size:10px;font-weight:700;font-family:'Space Grotesk',sans-serif;letter-spacing:.3px;}
+
+/* SNAP SCROLL */
+.sw{height:100%;overflow-y:scroll;scroll-snap-type:y mandatory;scrollbar-width:none;}
+.sw::-webkit-scrollbar{display:none;}
+.si{scroll-snap-align:start;flex-shrink:0;position:relative;overflow:hidden;display:flex;}
+.sdots{position:absolute;right:10px;top:50%;transform:translateY(-50%);display:flex;flex-direction:column;gap:5px;z-index:20;}
+.sdot{width:4px;height:4px;border-radius:4px;background:rgba(255,255,255,.2);cursor:pointer;transition:all .3s;}
+.sdot.on{height:18px;background:linear-gradient(180deg,var(--purple2),var(--purpleLight));}
+
+/* FEED */
+.fc{flex-direction:column;justify-content:flex-end;width:100%;}
+.fvo{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:12px;z-index:1;}
+.fpb{width:72px;height:72px;border-radius:50%;background:rgba(107,0,230,.4);border:2px solid rgba(168,85,247,.5);display:flex;align-items:center;justify-content:center;font-size:28px;backdrop-filter:blur(4px);}
+.fvt{color:rgba(255,255,255,.8);font-size:13px;font-weight:600;text-shadow:0 2px 8px rgba(0,0,0,.5);}
+.fg{padding:40px 16px 16px;background:linear-gradient(0deg,rgba(8,5,15,.95) 0%,rgba(8,5,15,.4) 60%,transparent 100%);position:relative;z-index:2;width:100%;}
+.far{display:flex;align-items:center;gap:10px;margin-bottom:10px;}
+.fav{width:40px;height:40px;border-radius:50%;background:linear-gradient(135deg,var(--purple),var(--purple2));display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;border:2px solid rgba(168,85,247,.3);}
+.fan{font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:14px;}
+.fam{font-size:11px;color:var(--muted);}
+.ftxt{font-size:14px;line-height:1.6;color:var(--offwhite);margin-bottom:14px;}
+.facts{display:flex;gap:20px;}
+.facts button{display:flex;align-items:center;gap:5px;color:var(--muted);font-size:13px;font-weight:600;transition:color .2s;}
+.facts button.lk{color:var(--redLight);}
+.fic{font-size:18px;}
+
+/* REELS */
+.rc{align-items:center;justify-content:center;width:100%;}
+.rbg{font-size:130px;opacity:.06;position:absolute;user-select:none;}
+.rply{width:80px;height:80px;border-radius:50%;background:rgba(107,0,230,.35);border:2px solid rgba(168,85,247,.5);display:flex;align-items:center;justify-content:center;font-size:32px;z-index:2;backdrop-filter:blur(4px);}
+.rg{position:absolute;bottom:0;left:0;right:0;padding:60px 16px 20px;background:linear-gradient(0deg,rgba(8,5,15,.95),transparent);z-index:3;}
+.rtit{font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:17px;margin:10px 0 4px;}
+.rupl{font-size:13px;color:var(--muted);}
+.rbr{display:flex;align-items:flex-end;justify-content:space-between;margin-top:12px;}
+.rmt{font-size:12px;color:var(--muted);}
+.racts{display:flex;gap:20px;}
+.racts button{display:flex;flex-direction:column;align-items:center;gap:3px;color:var(--offwhite);font-size:11px;font-weight:700;}
+.racts button.lk{color:var(--redLight);}
+.ric{font-size:26px;}
+
+/* TER */
+#tab-ter{overflow-y:auto;}
+.tst{position:sticky;top:0;background:var(--bg);padding:12px 16px 0;z-index:10;border-bottom:1px solid var(--border);}
+.tst h2{font-family:'Space Grotesk',sans-serif;font-size:20px;font-weight:800;margin-bottom:12px;background:linear-gradient(135deg,#fff,var(--purpleLight));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;}
+.stabs{display:flex;gap:8px;margin-bottom:12px;}
+.stb{flex:1;padding:9px 0;border-radius:10px;border:1px solid var(--border);background:transparent;color:var(--muted);font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:13px;transition:all .2s;}
+.stb.on{border-color:var(--purple2);background:rgba(107,0,230,.2);color:var(--purpleLight);box-shadow:0 0 12px rgba(107,0,230,.2);}
+.tbody{padding:12px 16px 16px;}
+.tp{display:none;}
+.tp.on{display:block;}
+.chdr{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;}
+.chdr p{font-size:13px;color:var(--muted);}
+.cl,.fl{display:flex;flex-direction:column;gap:12px;}
+.ctop{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px;}
+.ub{background:rgba(107,0,230,.25);color:var(--purpleLight);border-radius:8px;padding:4px 10px;font-size:13px;font-weight:700;border:1px solid rgba(168,85,247,.3);}
+.ct{font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:16px;margin-bottom:8px;}
+.cm{font-size:13px;color:var(--muted);margin-top:4px;}
+.frow{display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap;align-items:center;}
+.fb{padding:7px 14px;border-radius:8px;border:1px solid var(--border);background:transparent;color:var(--muted);font-family:'Space Grotesk',sans-serif;font-weight:600;font-size:12px;transition:all .2s;}
+.fb.on{border-color:var(--purple2);background:rgba(107,0,230,.2);color:var(--purpleLight);}
+.fcd{display:flex;gap:12px;align-items:flex-start;}
+.fci{font-size:28px;}
+.ftgs{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:6px;}
+.ftt{font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:14px;margin-bottom:3px;}
+.fmt{font-size:12px;color:var(--muted);}
+
+/* CHAT */
+#tab-chat{height:100%;}
+#tab-chat.on{display:flex;flex-direction:column;}
+#pn-contacts{display:flex;flex-direction:column;height:100%;}
+#pn-contacts.hide{display:none;}
+.cstk{padding:14px 16px 10px;border-bottom:1px solid var(--border);flex-shrink:0;}
+.cstk h2{font-family:'Space Grotesk',sans-serif;font-size:20px;font-weight:800;margin-bottom:10px;background:linear-gradient(135deg,#fff,var(--purpleLight));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;}
+.csrch{width:100%;padding:10px 16px;background:rgba(255,255,255,.04);border:1px solid var(--border);border-radius:12px;color:var(--offwhite);font-size:14px;}
+.csrch:focus{border-color:var(--purple3);}
+.cscrl{overflow-y:auto;flex:1;}
+.ci{display:flex;align-items:center;gap:12px;padding:13px 16px;border-bottom:1px solid rgba(59,32,96,.4);cursor:pointer;transition:background .15s;}
+.ci:hover,.ci:active{background:rgba(107,0,230,.08);}
+.cav{width:48px;height:48px;border-radius:50%;background:linear-gradient(135deg,var(--purple),var(--purple2));display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0;position:relative;border:2px solid rgba(168,85,247,.2);}
+.odot{position:absolute;bottom:2px;right:2px;width:11px;height:11px;border-radius:50%;background:#22c55e;border:2px solid var(--bg);}
+.cin{flex:1;min-width:0;}
+.cn{font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:14px;}
+.cp{font-size:12px;color:var(--muted);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.crt{display:flex;flex-direction:column;align-items:flex-end;gap:4px;flex-shrink:0;}
+.ctm{font-size:11px;color:var(--muted);}
+.ub2{background:linear-gradient(135deg,var(--red),var(--redLight));color:#fff;border-radius:50%;width:20px;height:20px;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;}
+#pn-cw{display:none;flex-direction:column;height:100%;}
+#pn-cw.show{display:flex;}
+.cwh{display:flex;align-items:center;gap:12px;padding:10px 14px;border-bottom:1px solid var(--border);flex-shrink:0;background:rgba(15,8,24,.95);backdrop-filter:blur(12px);}
+.cwbk{font-size:28px;color:var(--purpleLight);cursor:pointer;line-height:1;}
+.cwav{width:40px;height:40px;border-radius:50%;background:linear-gradient(135deg,var(--purple),var(--purple2));display:flex;align-items:center;justify-content:center;font-size:22px;}
+.cwn{font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:15px;}
+.cws{font-size:12px;margin-top:1px;}
+.msgs{flex:1;overflow-y:auto;padding:14px 12px;display:flex;flex-direction:column;gap:10px;background:var(--bg2);}
+.mr{display:flex;align-items:flex-end;gap:8px;}
+.mr.me{flex-direction:row-reverse;}
+.msm{width:28px;height:28px;border-radius:50%;background:linear-gradient(135deg,var(--purple),var(--purple2));display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0;}
+.mb{max-width:72%;padding:10px 14px;border-radius:16px;font-size:14px;line-height:1.5;background:var(--card);color:var(--offwhite);border-bottom-left-radius:4px;border:1px solid var(--border);}
+.mr.me .mb{background:linear-gradient(135deg,var(--purple),var(--purple2));border:none;border-bottom-left-radius:16px;border-bottom-right-radius:4px;}
+.mt{font-size:10px;color:var(--muted);margin-top:3px;}
+.mr.me .mt{text-align:right;}
+.mir{display:flex;align-items:center;gap:10px;padding:10px 12px;border-top:1px solid var(--border);flex-shrink:0;background:rgba(15,8,24,.95);}
+.minp{flex:1;padding:11px 16px;background:rgba(255,255,255,.05);border:1px solid var(--border);border-radius:24px;color:var(--offwhite);font-size:14px;}
+.minp:focus{border-color:var(--purple3);}
+.msnd{width:44px;height:44px;border-radius:50%;background:linear-gradient(135deg,var(--purple),var(--purple2));display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;border:none;cursor:pointer;box-shadow:0 4px 16px rgba(107,0,230,.4);}
+
+/* PROFILE */
+#tab-profile{overflow-y:auto;background:var(--bg);}
+.phead{text-align:center;padding:28px 20px 20px;position:relative;}
+.phead-bg{position:absolute;top:0;left:0;right:0;height:120px;background:linear-gradient(180deg,rgba(107,0,230,.2),transparent);pointer-events:none;}
+.pav{width:88px;height:88px;border-radius:50%;background:linear-gradient(135deg,var(--purple),var(--purple2),var(--purpleLight));display:flex;align-items:center;justify-content:center;font-size:36px;margin:0 auto 14px;border:3px solid rgba(168,85,247,.4);box-shadow:0 8px 32px rgba(107,0,230,.4);position:relative;z-index:1;}
+.pn{font-family:'Space Grotesk',sans-serif;font-weight:800;font-size:22px;}
+.pe{color:var(--muted);font-size:13px;margin:4px 0 6px;}
+.pinst{font-size:12px;color:var(--purpleLight);margin-bottom:10px;font-weight:600;}
+.sgrid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:20px;padding:0 16px;}
+.sc{text-align:center;padding:16px 8px;}
+.si2{font-size:22px;margin-bottom:4px;}
+.sv{font-family:'Space Grotesk',sans-serif;font-weight:800;font-size:24px;background:linear-gradient(135deg,var(--purple2),var(--purpleLight));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;}
+.sl{font-size:12px;color:var(--muted);font-weight:600;}
+.ml{display:flex;flex-direction:column;gap:10px;margin-bottom:20px;padding:0 16px;}
+.mi{display:flex;align-items:center;gap:14px;padding:14px 16px;cursor:pointer;transition:background .15s;border-radius:14px;}
+.mi:hover{background:rgba(107,0,230,.08);}
+.mi .mii{font-size:20px;}
+.mi .mln{font-family:'Space Grotesk',sans-serif;font-weight:600;font-size:14px;}
+.mi .chv{margin-left:auto;color:var(--muted);font-size:18px;}
+</style>
+</head>
+<body>
+
+<!-- ═══════ LANDING ═══════ -->
+<div id="pg-land" class="page show">
+  <div class="glow1"></div>
+  <div class="glow2"></div>
+  <div style="position:relative;z-index:1;display:flex;flex-direction:column;align-items:center;width:100%;">
+    <!-- LOGO -->
+    <div class="cr-logo">
+      <div class="cr-logo-inner">
+        <div class="cr-logo-text">CR</div>
+        <div class="cr-logo-sub">Campus</div>
+        <div class="cr-logo-dot"></div>
+      </div>
+    </div>
+    <div class="land-tagline">Nigeria's Campus Platform</div>
+    <h1 class="land-h">
+      <span class="w">Campus</span><span class="p">Room</span>
+    </h1>
+    <div class="land-line"></div>
+    <p class="land-p">Your all-in-one higher institution platform — connecting aspirants, students, lecturers, and alumni across Nigeria.</p>
+    <div class="land-btns">
+      <button class="btn btn-p" onclick="show('pg-login')" style="padding:13px 32px;font-size:15px;">Sign In</button>
+      <button class="btn btn-g" onclick="show('pg-register')" style="padding:13px 32px;font-size:15px;">Register</button>
+    </div>
+    <div class="chips">
+      <span class="chip">🎓 Aspirant</span>
+      <span class="chip">📚 Student</span>
+      <span class="chip">👨‍🏫 Lecturer</span>
+      <span class="chip">🏅 Alumni</span>
+    </div>
+    <div style="margin-top:24px;display:flex;gap:16px;flex-wrap:wrap;justify-content:center;">
+      <span style="font-size:12px;color:var(--muted);">🔴 Red · Purple · White</span>
+      <span style="font-size:12px;color:var(--muted);">🇳🇬 Made for Nigeria</span>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════ LOGIN ═══════ -->
+<div id="pg-login" class="page auth-pg">
+  <div class="abox">
+    <div style="text-align:center;margin-bottom:20px;">
+      <div class="cr-logo" style="width:60px;height:60px;border-radius:16px;margin-bottom:14px;"><div class="cr-logo-inner"><div class="cr-logo-text" style="font-size:16px;">CR</div><div class="cr-logo-dot" style="width:4px;height:4px;"></div></div></div>
+      <h2 style="font-family:'Space Grotesk',sans-serif;font-weight:800;font-size:22px;">Welcome <span style="background:linear-gradient(135deg,#8B1FFF,#C084FC);-webkit-background-clip:text;-webkit-text-fill-color:transparent;">Back</span></h2>
+      <p style="color:var(--muted);font-size:13px;margin-top:4px;">Sign in to CampusRoom</p>
+    </div>
+    <div class="acard">
+      <div id="login-step-a">
+        <div class="field">
+          <label>Role</label>
+          <select id="l-role">
+            <option value="">-- Select your role --</option>
+            <option>Aspirant</option><option>Student</option><option>Alumni</option><option>Lecturer</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Email / Matric No. / Staff ID</label>
+          <input id="l-email" type="email" placeholder="e.g. student@uni.edu.ng">
+        </div>
+        <div class="field">
+          <label>Password</label>
+          <input id="l-pw" type="password" placeholder="••••••••">
+        </div>
+        <p class="err" id="l-err"></p>
+        <button class="btn btn-p btn-w" style="margin-bottom:12px" onclick="loginSendOTP()">Send Verification Code →</button>
+        <div class="divider"><span>or</span></div>
+        <p class="afoot" style="margin-top:0;">No account? <span onclick="show('pg-register')">Register here</span></p>
+      </div>
+      <div id="login-step-b" style="display:none">
+        <p style="text-align:center;font-size:14px;color:var(--muted);margin-bottom:4px;">6-digit code sent to</p>
+        <p style="text-align:center;font-size:14px;font-weight:700;margin-bottom:4px;color:var(--purpleLight);" id="l-otp-dest"></p>
+        <div class="otp-row" id="l-otp-row"></div>
+        <p class="otp-timer">Expires in <span id="l-timer">02:00</span> · <span onclick="loginSendOTP(true)">Resend</span></p>
+        <p class="err" id="l-otp-err"></p>
+        <p class="ok" id="l-otp-ok"></p>
+        <button class="btn btn-p btn-w" style="margin-bottom:10px" onclick="loginVerifyOTP()">✓ Verify &amp; Sign In</button>
+        <button class="btn btn-g btn-w" onclick="loginBack()">← Go Back</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════ REGISTER ═══════ -->
+<div id="pg-register" class="page auth-pg">
+  <div class="abox">
+    <div style="text-align:center;margin-bottom:20px;">
+      <div class="cr-logo" style="width:60px;height:60px;border-radius:16px;margin-bottom:14px;"><div class="cr-logo-inner"><div class="cr-logo-text" style="font-size:16px;">CR</div><div class="cr-logo-dot" style="width:4px;height:4px;"></div></div></div>
+      <h2 style="font-family:'Space Grotesk',sans-serif;font-weight:800;font-size:22px;"><span style="background:linear-gradient(135deg,#8B1FFF,#C084FC);-webkit-background-clip:text;-webkit-text-fill-color:transparent;">Create</span> Account</h2>
+      <p style="color:var(--muted);font-size:13px;margin-top:4px;" id="rstep-lbl">Step 1 of 6 — Institution Type</p>
+    </div>
+    <div class="acard">
+      <!-- Step 1: Institution Type -->
+      <div class="step on" id="rs1">
+        <p style="font-size:13px;color:var(--muted);margin-bottom:12px;text-align:center;">What type of institution are you from?</p>
+        <div class="itype-row">
+          <div class="itype-btn" onclick="pickIType('University')"><div class="iem">🏛️</div><div class="iln">University</div></div>
+          <div class="itype-btn" onclick="pickIType('Polytechnic')"><div class="iem">⚙️</div><div class="iln">Polytechnic</div></div>
+          <div class="itype-btn" onclick="pickIType('College')"><div class="iem">🎓</div><div class="iln">College of Ed.</div></div>
+        </div>
+      </div>
+      <!-- Step 2: Pick Institution -->
+      <div class="step" id="rs2">
+        <div class="field">
+          <label>Institution Name</label>
+          <select id="r-inst"><option value="">-- Select institution --</option></select>
+        </div>
+        <div class="field">
+          <label>Faculty / School</label>
+          <select id="r-faculty" onchange="loadDepts()"><option value="">-- Select faculty --</option></select>
+        </div>
+        <div class="field">
+          <label>Department</label>
+          <select id="r-dept"><option value="">-- Select department --</option></select>
+        </div>
+      </div>
+      <!-- Step 3: Role -->
+      <div class="step" id="rs3">
+        <p style="font-size:13px;color:var(--muted);margin-bottom:12px;text-align:center;">What is your role?</p>
+        <div class="rgrid">
+          <div class="rcard" onclick="pickRole('Aspirant')"><div class="ri">🎓</div><div class="rn">Aspirant</div></div>
+          <div class="rcard" onclick="pickRole('Student')"><div class="ri">📚</div><div class="rn">Student</div></div>
+          <div class="rcard" onclick="pickRole('Lecturer')"><div class="ri">👨‍🏫</div><div class="rn">Lecturer</div></div>
+          <div class="rcard" onclick="pickRole('Alumni')"><div class="ri">🏅</div><div class="rn">Alumni</div></div>
+        </div>
+      </div>
+      <!-- Step 4: Personal Info -->
+      <div class="step" id="rs4">
+        <div class="field"><label>Full Name *</label><input id="r-name" placeholder="Surname Firstname Othername"></div>
+        <div class="field"><label>Date of Birth *</label><input id="r-dob" type="date"></div>
+        <div class="field"><label>State of Origin *</label><select id="r-state"><option value="">-- Select --</option></select></div>
+        <div class="field"><label>LGA</label><input id="r-lga" placeholder="Local Govt. Area"></div>
+        <div class="field"><label>Phone</label><input id="r-phone" placeholder="080XXXXXXXX"></div>
+        <div class="field"><label>Email *</label><input id="r-email" type="email" placeholder="you@example.com"></div>
+      </div>
+      <!-- Step 5: Academic ID -->
+      <div class="step" id="rs5">
+        <div id="ra-aspirant" style="display:none">
+          <div class="field"><label>JAMB Reg. No.</label><input id="r-jamb" placeholder="34567890AB"></div>
+        </div>
+        <div id="ra-student" style="display:none">
+          <div class="field"><label>Matric Number</label><input id="r-matric" placeholder="20/2001/001"></div>
+          <div class="field"><label>Level</label><select id="r-level"><option value="">-- Select --</option><option>100</option><option>200</option><option>300</option><option>400</option><option>500</option></select></div>
+        </div>
+        <div id="ra-lecturer" style="display:none">
+          <div class="field"><label>Staff ID</label><input id="r-staffid" placeholder="STAFF/0012"></div>
+        </div>
+        <div id="ra-alumni" style="display:none">
+          <div class="field"><label>Matric Number</label><input id="r-matric-al"></div>
+          <div class="field"><label>Graduation Year</label><select id="r-grad"><option value="">-- Select --</option></select></div>
+        </div>
+        <div class="field"><label>Password</label><input id="r-pw" type="password" placeholder="Min. 8 characters"></div>
+        <div class="field"><label>Confirm Password</label><input id="r-pw2" type="password" placeholder="Re-enter password"></div>
+      </div>
+      <!-- Step 6: OTP -->
+      <div class="step" id="rs6">
+        <p style="text-align:center;font-size:14px;color:var(--muted);margin-bottom:4px;">Enter the 6-digit code sent to</p>
+        <p style="text-align:center;font-size:14px;font-weight:700;color:var(--purpleLight);" id="r-otp-dest"></p>
+        <div class="otp-row" id="r-otp-row"></div>
+        <p class="otp-timer">Expires in <span id="r-timer">02:00</span> · <span onclick="regResendOTP()">Resend</span></p>
+        <p class="err" id="r-otp-err"></p>
+        <p class="ok" id="r-otp-ok"></p>
+      </div>
+
+      <p class="err" id="r-err"></p>
+      <div style="display:flex;gap:10px;margin-top:8px;">
+        <button class="btn btn-g" id="r-back" style="display:none" onclick="rBack()">← Back</button>
+        <button class="btn btn-p" style="flex:1" id="r-next" onclick="rNext()">Continue →</button>
+      </div>
+      <p class="afoot">Have an account? <span onclick="show('pg-login')">Sign In</span></p>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════ APP ═══════ -->
+<div id="pg-app" class="page" style="overflow:hidden;">
+  <header id="topbar">
+    <div class="brand">
+      <div class="cr-logo-sm">CR</div>
+      <span class="brand-text"><span class="w">Campus</span><span class="p">Room</span></span>
+    </div>
+    <div style="display:flex;align-items:center;gap:10px;">
+      <span class="pill" id="tb-role">Student</span>
+      <button style="font-size:20px;color:var(--muted);">🔔</button>
+    </div>
+  </header>
+
+  <div id="content">
+    <div id="tab-home" class="tab on">
+      <div class="sw" id="home-sw"></div>
+      <div class="sdots" id="home-dots"></div>
+    </div>
+    <div id="tab-reels" class="tab">
+      <div class="sw" id="reels-sw"></div>
+      <div class="sdots" id="reels-dots"></div>
+    </div>
+    <div id="tab-ter" class="tab">
+      <div class="tst">
+        <h2>TER &amp; Courses</h2>
+        <div class="stabs">
+          <button class="stb on" id="stb-courses" onclick="switchTER('courses')">📖 Courses</button>
+          <button class="stb" id="stb-ter" onclick="switchTER('ter')">🧪 TER</button>
+        </div>
+      </div>
+      <div class="tbody">
+        <div class="tp on" id="tp-courses">
+          <div class="chdr"><p id="csub">Your registered courses</p><button class="btn btn-p" id="add-btn" style="display:none;font-size:12px;padding:7px 14px">+ Add</button></div>
+          <div class="cl" id="course-list"></div>
+        </div>
+        <div class="tp" id="tp-ter">
+          <div class="frow">
+            <button class="fb on" data-f="All" onclick="setF('All')">All</button>
+            <button class="fb" data-f="Past Question" onclick="setF('Past Question')">Past Questions</button>
+            <button class="fb" data-f="Note" onclick="setF('Note')">Notes</button>
+            <button class="btn btn-p" id="up-btn" style="display:none;font-size:12px;padding:7px 14px;margin-left:auto">+ Upload</button>
+          </div>
+          <div class="fl" id="file-list"></div>
+        </div>
+      </div>
+    </div>
+    <div id="tab-chat" class="tab">
+      <div id="pn-contacts">
+        <div class="cstk">
+          <h2>Messages</h2>
+          <input class="csrch" placeholder="🔍  Search contacts…" oninput="searchC(this.value)">
+        </div>
+        <div class="cscrl" id="clist"></div>
+      </div>
+      <div id="pn-cw">
+        <div class="cwh">
+          <span class="cwbk" onclick="closeChat()">‹</span>
+          <div class="cwav" id="cw-av">👤</div>
+          <div><div class="cwn" id="cw-name">Name</div><div class="cws" id="cw-st">Online</div></div>
+        </div>
+        <div class="msgs" id="msgs"></div>
+        <div class="mir">
+          <input class="minp" id="minp" placeholder="Type a message…" onkeydown="if(event.key==='Enter')sendMsg()">
+          <button class="msnd" onclick="sendMsg()">➤</button>
+        </div>
+      </div>
+    </div>
+    <div id="tab-profile" class="tab">
+      <div class="phead">
+        <div class="phead-bg"></div>
+        <div class="pav" id="prof-av">📚</div>
+        <div class="pn" id="prof-name">Name</div>
+        <div class="pe" id="prof-email">email</div>
+        <div class="pinst" id="prof-inst"></div>
+        <span class="pill" id="prof-role">Student</span>
+      </div>
+      <div style="padding:0 16px 6px;"><div class="slbl">DASHBOARD</div></div>
+      <div class="sgrid">
+        <div class="card sc"><div class="si2">📖</div><div class="sv">3</div><div class="sl">Courses</div></div>
+        <div class="card sc"><div class="si2">🧪</div><div class="sv">4</div><div class="sl">TER Files</div></div>
+        <div class="card sc"><div class="si2">📢</div><div class="sv">6</div><div class="sl">Feed Posts</div></div>
+        <div class="card sc"><div class="si2">🎬</div><div class="sv">5</div><div class="sl">Reels</div></div>
+      </div>
+      <div style="padding:0 16px 6px;"><div class="slbl">ACCOUNT</div></div>
+      <div class="ml">
+        <div class="card mi"><span class="mii">✏️</span><span class="mln">Edit Profile</span><span class="chv">›</span></div>
+        <div class="card mi"><span class="mii">🔐</span><span class="mln">Change Password</span><span class="chv">›</span></div>
+        <div class="card mi"><span class="mii">🔔</span><span class="mln">Notifications</span><span class="chv">›</span></div>
+        <div class="card mi"><span class="mii">💬</span><span class="mln">Help &amp; Support</span><span class="chv">›</span></div>
+        <div class="card mi"><span class="mii">⚙️</span><span class="mln">Settings</span><span class="chv">›</span></div>
+      </div>
+      <div style="padding:0 16px 24px;"><button class="btn btn-d btn-w" onclick="doLogout()">Sign Out</button></div>
+    </div>
+  </div>
+
+  <nav id="botnav">
+    <button class="nb on" data-t="home" onclick="goTab('home')"><span class="ni">🏠</span><span class="nl">Home</span></button>
+    <button class="nb" data-t="reels" onclick="goTab('reels')"><span class="ni">🎬</span><span class="nl">Reels</span></button>
+    <button class="nb" data-t="ter" onclick="goTab('ter')"><span class="ni">🧪</span><span class="nl">TER</span></button>
+    <button class="nb" data-t="chat" onclick="goTab('chat')"><span class="ni">💬</span><span class="nl">Chat</span></button>
+    <button class="nb" data-t="profile" onclick="goTab('profile')"><span class="ni">👤</span><span class="nl">Profile</span></button>
+  </nav>
+</div>
+
+<script>
+/* ══════════ NIGERIA INSTITUTIONS DATABASE ══════════ */
+const INSTITUTIONS = {
+  University:[
+    "University of Lagos (UNILAG)","University of Ibadan (UI)","Obafemi Awolowo University (OAU)",
+    "University of Nigeria Nsukka (UNN)","Ahmadu Bello University (ABU)","University of Benin (UNIBEN)",
+    "Federal University of Technology Akure (FUTA)","University of Ilorin (UNILORIN)",
+    "University of Port Harcourt (UNIPORT)","Lagos State University (LASU)",
+    "Bayero University Kano (BUK)","University of Calabar (UNICAL)",
+    "Federal University Oye-Ekiti (FUOYE)","Ondo State University of Science & Tech (OSUSTECH)",
+    "Covenant University","Babcock University","Pan-Atlantic University",
+    "American University of Nigeria (AUN)","Nnamdi Azikiwe University (NAU)",
+    "Delta State University (DELSU)","Ekiti State University (EKSU)",
+    "Kwara State University (KWASU)","Benson Idahosa University",
+    "Landmark University","Crawford University","Redeemer's University",
+    "Lead City University","Bowen University","Igbinedion University",
+    "Madonna University","Rivers State University","Enugu State University (ESUT)",
+    "Abia State University (ABSU)","Imo State University (IMSU)",
+    "Kogi State University","Niger Delta University","Taraba State University",
+    "Federal University Dutsin-Ma","Federal University Lokoja","Federal University Lafia",
+    "Federal University Gashua","Federal University Birnin Kebbi","Michael Okpara University of Agriculture",
+    "Federal University of Agriculture Abeokuta (FUNAAB)","Federal University of Petroleum Resources (FUPRE)"
+  ],
+  Polytechnic:[
+    "Yaba College of Technology (YABATECH)","Lagos State Polytechnic (LASPOTECH)",
+    "Federal Polytechnic Nekede","Federal Polytechnic Ilaro","Federal Polytechnic Ede",
+    "Federal Polytechnic Bida","Federal Polytechnic Bauchi","Federal Polytechnic Offa",
+    "Federal Polytechnic Mubi","Federal Polytechnic Nasarawa","Federal Polytechnic Oko",
+    "Kaduna Polytechnic","Kwara State Polytechnic","Rivers State Polytechnic",
+    "Delta State Polytechnic","Osun State Polytechnic","Akwa Ibom State Polytechnic",
+    "Benue State Polytechnic","Cross River State Polytechnic","Edo State Polytechnic",
+    "Kano State Polytechnic","Abia State Polytechnic","Imo State Polytechnic",
+    "Ogun State Institute of Technology","Plateau State Polytechnic"
+  ],
+  College:[
+    "Federal College of Education Abeokuta","Federal College of Education Obudu",
+    "Federal College of Education Pankshin","Federal College of Education Kano",
+    "Federal College of Education Yola","Federal College of Education Okene",
+    "Federal College of Education Eha-Amufu","Federal College of Education Omoku",
+    "Federal College of Education Zaria","Federal College of Education Gombe",
+    "Lagos State College of Education","Osun State College of Education",
+    "Oyo State College of Education","Ondo State College of Education",
+    "Kaduna State College of Education","Kano State College of Education",
+    "Borno State College of Education","Anambra State College of Education",
+    "Imo State College of Education","Enugu State College of Education"
+  ]
+};
+
+const FACULTIES = {
+  "Science & Technology":[
+    "Computer Science","Information Technology","Software Engineering",
+    "Cyber Security","Data Science","Mathematics","Statistics",
+    "Physics","Chemistry","Biology","Biochemistry","Microbiology",
+    "Geology","Environmental Science"
+  ],
+  "Engineering":[
+    "Civil Engineering","Mechanical Engineering","Electrical Engineering",
+    "Electronic Engineering","Chemical Engineering","Petroleum Engineering",
+    "Agricultural Engineering","Computer Engineering","Aerospace Engineering",
+    "Materials & Metallurgical Engineering","Systems Engineering"
+  ],
+  "Medicine & Health Sciences":[
+    "Medicine & Surgery (MBBS)","Pharmacy","Nursing Science","Medical Laboratory Science",
+    "Physiotherapy","Dentistry","Radiography","Public Health",
+    "Optometry","Nutrition & Dietetics"
+  ],
+  "Social Sciences":[
+    "Economics","Sociology","Political Science","Psychology",
+    "Mass Communication","Criminology","International Relations",
+    "Public Administration","Social Work","Geography"
+  ],
+  "Arts & Humanities":[
+    "English Language","Linguistics","History","Philosophy",
+    "Religious Studies","Theatre Arts","Music","Fine & Applied Arts",
+    "French","Yoruba","Hausa","Igbo"
+  ],
+  "Law":[
+    "Law (LLB)","Islamic Law","International Law","Commercial Law"
+  ],
+  "Agriculture":[
+    "Agricultural Science","Animal Science","Crop Science","Fisheries & Aquaculture",
+    "Forestry & Wildlife","Soil Science","Agricultural Economics","Food Science & Technology"
+  ],
+  "Education":[
+    "Education & Biology","Education & Chemistry","Education & Physics","Education & Mathematics",
+    "Education & English","Education & History","Early Childhood Education",
+    "Educational Administration","Guidance & Counselling","Physical & Health Education"
+  ],
+  "Business & Management":[
+    "Accounting","Business Administration","Finance","Banking & Finance",
+    "Marketing","Human Resource Management","Entrepreneurship",
+    "Insurance","Actuarial Science","Office Technology & Management"
+  ],
+  "Environmental Sciences":[
+    "Architecture","Urban & Regional Planning","Estate Management",
+    "Quantity Surveying","Building Technology","Surveying & Geoinformatics"
+  ]
+};
+
+const STATES=["Abia","Adamawa","Akwa Ibom","Anambra","Bauchi","Bayelsa","Benue","Borno","Cross River","Delta","Ebonyi","Edo","Ekiti","Enugu","FCT","Gombe","Imo","Jigawa","Kaduna","Kano","Katsina","Kebbi","Kogi","Kwara","Lagos","Nasarawa","Niger","Ogun","Ondo","Osun","Oyo","Plateau","Rivers","Sokoto","Taraba","Yobe","Zamfara"];
+
+const POSTS=[
+  {id:1,type:"post",av:"🏫",author:"CampusRoom Official",role:"Admin",time:"2h ago",content:"📣 The 2025/2026 academic calendar has been officially released. First semester begins September 15.",likes:142,comments:38,tag:"Official",bg:"linear-gradient(180deg,#0e0520 0%,#1E1230 100%)"},
+  {id:2,type:"video",av:"🎓",author:"Student Union Gov.",role:"SUG",time:"5h ago",content:"Watch the highlights from this year's matriculation ceremony! Welcome to the Class of 2025/2026. 🎉",likes:310,comments:74,tag:"Event",bg:"linear-gradient(160deg,#1a0033,#4C1D95)",vt:"Matriculation 2025 Highlights"},
+  {id:3,type:"post",av:"👩‍🏫",author:"Dr. Amaka Obi",role:"Lecturer",time:"6h ago",content:"CSC 201 students — Week 6 lecture notes are now live on TER. Review before Thursday. Short quiz incoming! 📚",likes:89,comments:21,tag:"CSC 201",bg:"linear-gradient(180deg,#070520 0%,#1E1230 100%)"},
+  {id:4,type:"video",av:"📺",author:"CampusRoom TV",role:"Media",time:"1d ago",content:"Campus life documentary — A day in the life of a 200-level Engineering student. 🎬",likes:527,comments:113,tag:"Campus Life",bg:"linear-gradient(160deg,#1a0033,#6B00E6)",vt:"Day in the Life – Engineering 200L"},
+  {id:5,type:"post",av:"👨‍🏫",author:"Prof. Ade Taiwo",role:"Lecturer",time:"1d ago",content:"MTH 101 mid-semester exam: July 14. Chapters 1–7 in scope. Past questions now on TER. Good luck! 📝",likes:203,comments:55,tag:"MTH 101",bg:"linear-gradient(180deg,#0a0020 0%,#1E1230 100%)"},
+  {id:6,type:"post",av:"🏅",author:"Alumni Network NG",role:"Alumni",time:"3d ago",content:"Calling all alumni 2020–2022! Annual homecoming dinner is August 10. Registration is open. 🎊",likes:98,comments:29,tag:"Alumni",bg:"linear-gradient(180deg,#08050F 0%,#1E1230 100%)"}
+];
+const REELS=[
+  {id:1,title:"Intro to Data Structures",upl:"Dr. Amaka Obi",course:"CSC 201",dur:"14:22",bg:"linear-gradient(160deg,#1a0033,#6B00E6)",ico:"💻",views:"1.2k",likes:88},
+  {id:2,title:"Matriculation Ceremony 2025",upl:"CampusRoom TV",course:"Event",dur:"8:05",bg:"linear-gradient(160deg,#0f0020,#4C1D95)",ico:"🎓",views:"3.8k",likes:312},
+  {id:3,title:"How to Solve Calculus Limits",upl:"Prof. Ade Taiwo",course:"MTH 101",dur:"22:10",bg:"linear-gradient(160deg,#0d1b2a,#1b4332)",ico:"📐",views:"2.1k",likes:175},
+  {id:4,title:"Technical Writing for Final Year",upl:"Mrs. Funmi Alabi",course:"ENG 202",dur:"11:47",bg:"linear-gradient(160deg,#3d0000,#CC2244)",ico:"✍️",views:"956",likes:64},
+  {id:5,title:"Campus Tour – Main Campus",upl:"CampusRoom TV",course:"Campus Life",dur:"6:30",bg:"linear-gradient(160deg,#1a0033,#9B1FFF)",ico:"🏫",views:"4.5k",likes:421}
+];
+const COURSES=[
+  {code:"CSC 201",title:"Data Structures",units:3,lec:"Dr. Amaka Obi",sch:"Mon/Wed 10AM"},
+  {code:"MTH 101",title:"Calculus I",units:4,lec:"Prof. Ade Taiwo",sch:"Tue/Thu 8AM"},
+  {code:"ENG 202",title:"Technical Writing",units:2,lec:"Mrs. Funmi Alabi",sch:"Fri 12PM"}
+];
+const TER=[
+  {id:1,type:"Past Question",course:"CSC 201",year:"2023/2024",title:"First Semester Exam",upl:"Dr. Amaka Obi"},
+  {id:2,type:"Note",course:"MTH 101",year:"2024/2025",title:"Calculus Week 3 Notes",upl:"Prof. Ade Taiwo"},
+  {id:3,type:"Past Question",course:"MTH 101",year:"2022/2023",title:"Second Semester Exam",upl:"Prof. Ade Taiwo"},
+  {id:4,type:"Note",course:"ENG 202",year:"2024/2025",title:"Technical Report Writing Guide",upl:"Mrs. Funmi Alabi"}
+];
+const CONTACTS=[
+  {id:1,name:"Dr. Amaka Obi",av:"👩‍🏫",online:true,prev:"The quiz covers chapters 4–6",time:"2m ago",unread:2,msgs:[{f:"them",t:"Good morning! Don't forget the quiz on Thursday.",tm:"9:00 AM"},{f:"them",t:"The quiz covers chapters 4–6.",tm:"9:01 AM"},{f:"me",t:"Good morning ma. Thank you!",tm:"9:05 AM"}]},
+  {id:2,name:"Prof. Ade Taiwo",av:"👨‍🏫",online:false,prev:"Past questions uploaded to TER",time:"1h ago",unread:0,msgs:[{f:"them",t:"MTH 101 past questions are now on TER.",tm:"8:00 AM"},{f:"me",t:"Thank you sir!",tm:"8:10 AM"},{f:"them",t:"Good luck!",tm:"8:12 AM"}]},
+  {id:3,name:"Chioma Nwosu",av:"🧑‍🎓",online:true,prev:"Are you going for the SUG meeting?",time:"30m ago",unread:1,msgs:[{f:"me",t:"Hey Chioma, did you read for the test?",tm:"Yesterday"},{f:"them",t:"Yes o! Are you going for the SUG meeting today?",tm:"Yesterday"}]},
+  {id:4,name:"CampusRoom Support",av:"🏫",online:true,prev:"Welcome to CampusRoom!",time:"Yesterday",unread:0,msgs:[{f:"them",t:"👋 Welcome to CampusRoom!",tm:"Yesterday"},{f:"them",t:"Reach out anytime if you need help.",tm:"Yesterday"}]},
+  {id:5,name:"Emeka Okafor",av:"🧑‍💼",online:false,prev:"Check the alumni group",time:"2d ago",unread:0,msgs:[{f:"them",t:"Have you seen the homecoming details?",tm:"2 days ago"},{f:"me",t:"Not yet, thanks!",tm:"2 days ago"}]}
+];
+const REPLIES=["Got it, thanks! 👍","Okay, I'll check that out.","Thanks for letting me know!","Sure, no problem!","I'll get back to you soon.","Alright! 😊","Noted, thank you."];
+const REMO={Aspirant:"🎓",Student:"📚",Lecturer:"👨‍🏫",Alumni:"🏅"};
+
+/* ── STATE ── */
+let CU=null,regRole="",regStep=1,regIType="",regInst="",activeChat=null;
+let contacts=CONTACTS.map(c=>({...c,msgs:[...c.msgs]}));
+let loginOTP="",regOTP="",loginTimerID=null,regTimerID=null,loginUserData=null;
+
+/* ── INIT ── */
+(function(){
+  // states
+  const ss=document.getElementById("r-state");
+  STATES.forEach(s=>{const o=document.createElement("option");o.value=s;o.textContent=s;ss.appendChild(o);});
+  // grad years
+  const sg=document.getElementById("r-grad");
+  for(let y=2005;y<=2025;y++){const o=document.createElement("option");o.value=y;o.textContent=y;sg.appendChild(o);}
+  // OTP boxes
+  buildOTPBoxes("l-otp-row","l");
+  buildOTPBoxes("r-otp-row","r");
+})();
+
+/* ── PAGE NAV ── */
+function show(id){
+  document.querySelectorAll(".page").forEach(p=>{p.classList.remove("show");p.style.display="none";});
+  const el=document.getElementById(id);
+  el.classList.add("show");
+  el.style.display="flex";
+}
+
+/* ── OTP ── */
+function buildOTPBoxes(cid,prefix){
+  const row=document.getElementById(cid); row.innerHTML="";
+  for(let i=0;i<6;i++){
+    const inp=document.createElement("input");
+    inp.className="otp-box";inp.id=prefix+"-otp-"+i;inp.maxLength=1;inp.inputMode="numeric";
+    inp.addEventListener("input",function(){if(this.value&&i<5)document.getElementById(prefix+"-otp-"+(i+1)).focus();});
+    inp.addEventListener("keydown",function(e){if(e.key==="Backspace"&&!this.value&&i>0)document.getElementById(prefix+"-otp-"+(i-1)).focus();});
+    row.appendChild(inp);
+  }
+}
+function getOTP(prefix){let v="";for(let i=0;i<6;i++)v+=document.getElementById(prefix+"-otp-"+i).value;return v;}
+function clearOTP(prefix){for(let i=0;i<6;i++){const b=document.getElementById(prefix+"-otp-"+i);if(b)b.value="";}}
+function genOTP(){return Math.floor(100000+Math.random()*900000).toString();}
+function startTimer(prefix,elId,sec){
+  if(prefix==="l"&&loginTimerID)clearInterval(loginTimerID);
+  if(prefix==="r"&&regTimerID)clearInterval(regTimerID);
+  let s=sec;
+  const el=document.getElementById(elId);
+  const tick=()=>{el.textContent=Math.floor(s/60).toString().padStart(2,"0")+":"+(s%60).toString().padStart(2,"0");if(s<=0){el.textContent="Expired";clearInterval(id);}s--;};
+  tick();
+  const id=setInterval(tick,1000);
+  if(prefix==="l")loginTimerID=id;else regTimerID=id;
+}
+function autoFillOTP(prefix,code){
+  setTimeout(()=>{code.split("").forEach((d,i)=>{const b=document.getElementById(prefix+"-otp-"+i);if(b)b.value=d;});},800);
+}
+
+/* ── LOGIN ── */
+function loginSendOTP(resend){
+  const err=document.getElementById("l-err");
+  if(!resend){
+    const role=document.getElementById("l-role").value;
+    const email=document.getElementById("l-email").value.trim();
+    const pw=document.getElementById("l-pw").value;
+    if(!role||!email||!pw){err.textContent="Please fill all fields.";err.classList.add("show");return;}
+    err.classList.remove("show");
+    loginUserData={role,email,pw};
+  }
+  loginOTP=genOTP();
+  console.log("🔑 LOGIN OTP (demo):",loginOTP);
+  clearOTP("l");
+  document.getElementById("l-otp-dest").textContent=loginUserData.email;
+  document.getElementById("l-otp-err").classList.remove("show");
+  const ok=document.getElementById("l-otp-ok");
+  ok.textContent="✅ Verification code sent to "+loginUserData.email;ok.classList.add("show");
+  setTimeout(()=>ok.classList.remove("show"),4000);
+  startTimer("l","l-timer",120);
+  document.getElementById("login-step-a").style.display="none";
+  document.getElementById("login-step-b").style.display="block";
+  autoFillOTP("l",loginOTP);
+}
+function loginVerifyOTP(){
+  const entered=getOTP("l");
+  const err=document.getElementById("l-otp-err");
+  if(entered.length<6){err.textContent="Enter all 6 digits.";err.classList.add("show");return;}
+  if(entered!==loginOTP){err.textContent="Incorrect code. Please try again.";err.classList.add("show");return;}
+  err.classList.remove("show");
+  if(loginTimerID)clearInterval(loginTimerID);
+  const {role,email}=loginUserData;
+  const name=email.split("@")[0].replace(/\./g," ").replace(/\b\w/g,c=>c.toUpperCase());
+  startApp({role,email,name,inst:""});
+}
+function loginBack(){
+  document.getElementById("login-step-b").style.display="none";
+  document.getElementById("login-step-a").style.display="block";
+  if(loginTimerID)clearInterval(loginTimerID);
+}
+
+/* ── REGISTER: Institution ── */
+function pickIType(t){
+  regIType=t;
+  document.querySelectorAll(".itype-btn").forEach(b=>b.classList.toggle("sel",b.querySelector(".iln").textContent.includes(t.replace("College","College"))||b.querySelector(".iln").textContent===t));
+  // populate institution dropdown
+  const sel=document.getElementById("r-inst");
+  sel.innerHTML="<option value=''>-- Select institution --</option>";
+  (INSTITUTIONS[t]||[]).forEach(i=>{const o=document.createElement("option");o.value=i;o.textContent=i;sel.appendChild(o);});
+  // populate faculty
+  const fsel=document.getElementById("r-faculty");
+  fsel.innerHTML="<option value=''>-- Select faculty --</option>";
+  Object.keys(FACULTIES).forEach(f=>{const o=document.createElement("option");o.value=f;o.textContent=f;fsel.appendChild(o);});
+  document.getElementById("r-dept").innerHTML="<option value=''>-- Select department --</option>";
+}
+function loadDepts(){
+  const fac=document.getElementById("r-faculty").value;
+  const dsel=document.getElementById("r-dept");
+  dsel.innerHTML="<option value=''>-- Select department --</option>";
+  (FACULTIES[fac]||[]).forEach(d=>{const o=document.createElement("option");o.value=d;o.textContent=d;dsel.appendChild(o);});
+}
+
+/* ── REGISTER: Role ── */
+function pickRole(r){
+  regRole=r;
+  document.querySelectorAll(".rcard").forEach(c=>c.classList.toggle("sel",c.querySelector(".rn").textContent===r));
+}
+
+/* ── REGISTER: Steps ── */
+function rNext(){
+  const err=document.getElementById("r-err");err.classList.remove("show");
+  if(regStep===1){
+    if(!regIType){err.textContent="Select an institution type.";err.classList.add("show");return;}
+  }
+  if(regStep===2){
+    const inst=document.getElementById("r-inst").value;
+    const fac=document.getElementById("r-faculty").value;
+    const dept=document.getElementById("r-dept").value;
+    if(!inst||!fac||!dept){err.textContent="Select institution, faculty and department.";err.classList.add("show");return;}
+    regInst=inst;
+  }
+  if(regStep===3){
+    if(!regRole){err.textContent="Select a role.";err.classList.add("show");return;}
+    ["aspirant","student","lecturer","alumni"].forEach(r=>document.getElementById("ra-"+r).style.display="none");
+    document.getElementById("ra-"+regRole.toLowerCase()).style.display="block";
+  }
+  if(regStep===4){
+    const n=document.getElementById("r-name").value.trim();
+    const d=document.getElementById("r-dob").value;
+    const s=document.getElementById("r-state").value;
+    const e=document.getElementById("r-email").value.trim();
+    if(!n||!d||!s||!e){err.textContent="Fill all required fields including Email.";err.classList.add("show");return;}
+  }
+  if(regStep===5){
+    const pw=document.getElementById("r-pw").value;
+    const pw2=document.getElementById("r-pw2").value;
+    if(!pw){err.textContent="Enter a password.";err.classList.add("show");return;}
+    if(pw!==pw2){err.textContent="Passwords don't match.";err.classList.add("show");return;}
+    // send OTP
+    regOTP=genOTP();
+    console.log("🔑 REGISTER OTP (demo):",regOTP);
+    const email=document.getElementById("r-email").value.trim();
+    clearOTP("r");
+    document.getElementById("r-otp-dest").textContent=email;
+    document.getElementById("r-otp-err").classList.remove("show");
+    const ok=document.getElementById("r-otp-ok");
+    ok.textContent="✅ Verification code sent to "+email;ok.classList.add("show");
+    setTimeout(()=>ok.classList.remove("show"),4000);
+    startTimer("r","r-timer",120);
+    regStep=6;renderRegStep();
+    autoFillOTP("r",regOTP);
+    return;
+  }
+  if(regStep===6){
+    const entered=getOTP("r");
+    const err2=document.getElementById("r-otp-err");
+    if(entered.length<6){err2.textContent="Enter all 6 digits.";err2.classList.add("show");return;}
+    if(entered!==regOTP){err2.textContent="Incorrect code. Try again.";err2.classList.add("show");return;}
+    err2.classList.remove("show");
+    if(regTimerID)clearInterval(regTimerID);
+    const name=document.getElementById("r-name").value.trim();
+    const email=document.getElementById("r-email").value.trim();
+    startApp({role:regRole,email,name,inst:regInst});
+    return;
+  }
+  regStep++;renderRegStep();
+}
+function rBack(){
+  if(regStep===6)regStep=5;else regStep--;
+  renderRegStep();
+}
+function renderRegStep(){
+  const labels=["Institution Type","Choose Institution","Your Role","Personal Info","Security Setup","Verify Email"];
+  document.getElementById("rstep-lbl").textContent="Step "+regStep+" of 6 — "+labels[regStep-1];
+  document.querySelectorAll(".step").forEach(s=>s.classList.remove("on"));
+  document.getElementById("rs"+regStep).classList.add("on");
+  document.getElementById("r-back").style.display=regStep===1?"none":"inline-flex";
+  const nxt=document.getElementById("r-next");
+  nxt.textContent=regStep===5?"Send Verification Code →":regStep===6?"✓ Verify & Create Account":"Continue →";
+}
+function regResendOTP(){
+  regOTP=genOTP();console.log("🔑 RESEND OTP:",regOTP);
+  clearOTP("r");startTimer("r","r-timer",120);
+  const ok=document.getElementById("r-otp-ok");
+  ok.textContent="✅ New code sent!";ok.classList.add("show");
+  setTimeout(()=>ok.classList.remove("show"),3000);
+  autoFillOTP("r",regOTP);
+}
+
+/* ── START APP ── */
+function startApp(user){
+  CU=user;
+  document.getElementById("tb-role").textContent=user.role;
+  document.getElementById("prof-av").textContent=REMO[user.role]||"👤";
+  document.getElementById("prof-name").textContent=user.name;
+  document.getElementById("prof-email").textContent=user.email;
+  document.getElementById("prof-role").textContent=user.role;
+  document.getElementById("prof-inst").textContent=user.inst?("🏛️ "+user.inst):"";
+  const isLec=user.role==="Lecturer";
+  document.getElementById("csub").textContent=isLec?"Courses you teach":"Your registered courses";
+  document.getElementById("add-btn").style.display=isLec?"inline-flex":"none";
+  document.getElementById("up-btn").style.display=isLec?"inline-flex":"none";
+  buildHome();buildReels();buildCourses();buildTERList("All");buildContacts(contacts);
+  document.querySelectorAll(".page").forEach(p=>{p.classList.remove("show");p.style.display="none";});
+  const app=document.getElementById("pg-app");
+  app.classList.add("show");app.style.display="flex";
+  goTab("home");
+}
+function doLogout(){
+  CU=null;
+  const app=document.getElementById("pg-app");app.classList.remove("show");app.style.display="none";
+  regStep=1;regRole="";regIType="";regInst="";
+  document.querySelectorAll(".step").forEach(s=>s.classList.remove("on"));
+  document.getElementById("rs1").classList.add("on");
+  document.getElementById("rstep-lbl").textContent="Step 1 of 6 — Institution Type";
+  document.getElementById("r-back").style.display="none";
+  document.getElementById("r-next").textContent="Continue →";
+  document.getElementById("login-step-a").style.display="block";
+  document.getElementById("login-step-b").style.display="none";
+  show("pg-land");
+}
+
+/* ── TAB NAV ── */
+function goTab(t){
+  document.querySelectorAll(".tab").forEach(el=>{el.classList.remove("on");el.style.display="none";});
+  const el=document.getElementById("tab-"+t);
+  el.classList.add("on");
+  if(t==="chat"){el.style.display="flex";el.style.flexDirection="column";el.style.height="100%";}
+  else el.style.display="block";
+  document.querySelectorAll(".nb").forEach(b=>b.classList.toggle("on",b.dataset.t===t));
+}
+
+/* ── HOME ── */
+function buildHome(){
+  const sw=document.getElementById("home-sw"),sd=document.getElementById("home-dots");
+  const H=window.innerHeight-116;sw.innerHTML="";sd.innerHTML="";
+  POSTS.forEach((p,i)=>{
+    const el=document.createElement("div");el.className="si fc";
+    el.style.cssText=`height:${H}px;width:100%;background:${p.bg};flex-direction:column;justify-content:flex-end;`;
+    el.innerHTML=`${p.type==="video"?`<div class="fvo"><div class="fpb">▶</div><div class="fvt">${p.vt}</div></div>`:""}<div class="fg"><div class="far"><div class="fav">${p.av}</div><div style="flex:1"><div class="fan">${p.author}</div><div class="fam">${p.role} · ${p.time}</div></div><span class="pill">${p.tag}</span></div><p class="ftxt">${p.content}</p><div class="facts"><button class="lbtn"><span class="fic">🤍</span><span class="lc">${p.likes}</span></button><button><span class="fic">💬</span>${p.comments}</button><button><span class="fic">↗️</span>Share</button></div></div>`;
+    el.querySelector(".lbtn").addEventListener("click",function(){const lk=this.classList.toggle("lk");this.querySelector(".fic").textContent=lk?"❤️":"🤍";const c=this.querySelector(".lc");c.textContent=parseInt(c.textContent)+(lk?1:-1);});
+    sw.appendChild(el);
+    const dot=document.createElement("div");dot.className="sdot"+(i===0?" on":"");
+    dot.addEventListener("click",()=>sw.scrollTo({top:i*H,behavior:"smooth"}));
+    sd.appendChild(dot);
+  });
+  sw.addEventListener("scroll",()=>{const idx=Math.round(sw.scrollTop/(window.innerHeight-116));sd.querySelectorAll(".sdot").forEach((d,i)=>d.classList.toggle("on",i===idx));},{passive:true});
+}
+
+/* ── REELS ── */
+function buildReels(){
+  const sw=document.getElementById("reels-sw"),sd=document.getElementById("reels-dots");
+  const H=window.innerHeight-116;sw.innerHTML="";sd.innerHTML="";
+  REELS.forEach((r,i)=>{
+    const el=document.createElement("div");el.className="si rc";
+    el.style.cssText=`height:${H}px;width:100%;background:${r.bg};align-items:center;justify-content:center;`;
+    el.innerHTML=`<div class="rbg">${r.ico}</div><div class="rply" style="display:${i===0?"flex":"none"}">▶</div><div class="rg"><span class="pill">${r.course}</span><div class="rtit">${r.title}</div><div class="rupl">${r.upl}</div><div class="rbr"><div class="rmt">👁 ${r.views} · 🕐 ${r.dur}</div><div class="racts"><button class="rlb"><span class="ric">🤍</span><span class="rlc">${r.likes}</span></button><button><span class="ric">💬</span>Comment</button><button><span class="ric">↗️</span>Share</button></div></div></div>`;
+    el.querySelector(".rlb").addEventListener("click",function(e){e.stopPropagation();const lk=this.classList.toggle("lk");this.querySelector(".ric").textContent=lk?"❤️":"🤍";const c=this.querySelector(".rlc");c.textContent=parseInt(c.textContent)+(lk?1:-1);});
+    sw.appendChild(el);
+    const dot=document.createElement("div");dot.className="sdot"+(i===0?" on":"");
+    dot.addEventListener("click",()=>sw.scrollTo({top:i*H,behavior:"smooth"}));
+    sd.appendChild(dot);
+  });
+  sw.addEventListener("scroll",()=>{const idx=Math.round(sw.scrollTop/(window.innerHeight-116));sd.querySelectorAll(".sdot").forEach((d,i)=>d.classList.toggle("on",i===idx));sw.querySelectorAll(".rply").forEach((p,i)=>p.style.display=i===idx?"flex":"none");},{passive:true});
+}
+
+/* ── TER ── */
+function switchTER(t){document.querySelectorAll(".stb").forEach(b=>b.classList.remove("on"));document.getElementById("stb-"+t).classList.add("on");document.querySelectorAll(".tp").forEach(p=>p.classList.remove("on"));document.getElementById("tp-"+t).classList.add("on");}
+function buildCourses(){
+  const list=document.getElementById("course-list");list.innerHTML="";
+  COURSES.forEach(c=>{const d=document.createElement("div");d.className="card";d.innerHTML=`<div class="ctop"><span class="pill" style="color:#C084FC;border-color:rgba(192,132,252,.4);background:rgba(192,132,252,.15)">${c.code}</span><span class="ub">${c.units} Units</span></div><div class="ct">${c.title}</div><div class="cm">👨‍🏫 ${c.lec}</div><div class="cm">🕐 ${c.sch}</div>`;list.appendChild(d);});
+}
+function setF(f){document.querySelectorAll(".fb").forEach(b=>b.classList.toggle("on",b.dataset.f===f));buildTERList(f);}
+function buildTERList(f){
+  const list=document.getElementById("file-list");list.innerHTML="";
+  (f==="All"?TER:TER.filter(x=>x.type===f)).forEach(r=>{
+    const d=document.createElement("div");d.className="card fcd";
+    const c=r.type==="Past Question"?"#8B1FFF":"#CC2244";
+    d.innerHTML=`<span class="fci">${r.type==="Past Question"?"📝":"📄"}</span><div style="flex:1"><div class="ftgs"><span class="pill" style="color:${c};border-color:${c}66;background:${c}22">${r.type}</span><span class="pill" style="color:#C084FC;border-color:rgba(192,132,252,.4);background:rgba(192,132,252,.15)">${r.course}</span></div><div class="ftt">${r.title}</div><div class="fmt">${r.year} · ${r.upl}</div></div><button class="btn btn-g" style="font-size:12px;padding:6px 12px;flex-shrink:0">View</button>`;
+    list.appendChild(d);
+  });
+}
+
+/* ── CHAT ── */
+function buildContacts(list){
+  const el=document.getElementById("clist");el.innerHTML="";
+  list.forEach(c=>{
+    const item=document.createElement("div");item.className="ci";
+    item.innerHTML=`<div class="cav">${c.av}${c.online?'<div class="odot"></div>':""}</div><div class="cin"><div class="cn">${c.name}</div><div class="cp">${c.prev}</div></div><div class="crt"><span class="ctm">${c.time}</span>${c.unread>0?`<span class="ub2">${c.unread}</span>`:""}</div>`;
+    item.addEventListener("click",()=>openChat(c.id));el.appendChild(item);
+  });
+}
+function searchC(v){buildContacts(contacts.filter(c=>c.name.toLowerCase().includes(v.toLowerCase())));}
+function openChat(id){
+  activeChat=contacts.find(c=>c.id===id);if(!activeChat)return;
+  activeChat.unread=0;buildContacts(contacts);
+  document.getElementById("cw-av").textContent=activeChat.av;
+  document.getElementById("cw-name").textContent=activeChat.name;
+  document.getElementById("cw-st").textContent=activeChat.online?"Online":"Offline";
+  document.getElementById("cw-st").style.color=activeChat.online?"#22c55e":"var(--muted)";
+  renderMsgs();
+  document.getElementById("pn-contacts").style.display="none";
+  document.getElementById("pn-cw").style.display="flex";
+  document.getElementById("pn-cw").style.flexDirection="column";
+  document.getElementById("pn-cw").style.height="100%";
+  setTimeout(()=>{const e=document.getElementById("msgs");e.scrollTop=e.scrollHeight;},60);
+}
+function closeChat(){document.getElementById("pn-cw").style.display="none";document.getElementById("pn-contacts").style.display="flex";document.getElementById("pn-contacts").style.flexDirection="column";document.getElementById("pn-contacts").style.height="100%";}
+function renderMsgs(){
+  const el=document.getElementById("msgs");el.innerHTML="";
+  activeChat.msgs.forEach(m=>{
+    const row=document.createElement("div");row.className="mr"+(m.f==="me"?" me":"");
+    row.innerHTML=`${m.f!=="me"?`<div class="msm">${activeChat.av}</div>`:""}<div><div class="mb">${m.t}</div><div class="mt">${m.tm}</div></div>`;
+    el.appendChild(row);
+  });
+  setTimeout(()=>{el.scrollTop=el.scrollHeight;},50);
+}
+function sendMsg(){
+  const inp=document.getElementById("minp"),txt=inp.value.trim();
+  if(!txt||!activeChat)return;
+  const now=new Date(),tm=now.getHours().toString().padStart(2,"0")+":"+now.getMinutes().toString().padStart(2,"0");
+  activeChat.msgs.push({f:"me",t:txt,tm});activeChat.prev=txt;activeChat.time="Just now";
+  inp.value="";renderMsgs();buildContacts(contacts);
+  setTimeout(()=>{
+    const rep=REPLIES[Math.floor(Math.random()*REPLIES.length)];
+    activeChat.msgs.push({f:"them",t:rep,tm});activeChat.prev=rep;
+    renderMsgs();buildContacts(contacts);
+  },1200);
+}
+
+window.addEventListener("resize",()=>{if(CU){buildHome();buildReels();}});
+</script>
+</body>
+</html>
