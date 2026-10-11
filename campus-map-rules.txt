@@ -1,0 +1,58 @@
+CAMPUS MAP — Firestore rules to ADD (merge into your existing rules; do not replace them)
+=======================================================================================
+
+Inside:  service cloud.firestore { match /databases/{database}/documents { ... } }
+add this helper function and these blocks:
+
+  function isAdmin() {
+    return request.auth != null &&
+           exists(/databases/$(database)/documents/admins/$(request.auth.uid));
+  }
+
+  // Nobody can make themselves an admin from the app. Admins are added by hand in the console.
+  match /admins/{uid} {
+    allow read: if request.auth != null && request.auth.uid == uid;
+    allow write: if false;
+  }
+
+  // Where each campus map is centred (created automatically the first time someone opens it)
+  match /campusMaps/{slug} {
+    allow read, create: if request.auth != null;
+    allow update, delete: if isAdmin();
+  }
+
+  // Pins on the map: students suggest (pending), admins approve
+  match /places/{id} {
+    allow read: if request.auth != null &&
+      (resource.data.status == 'approved' || resource.data.createdBy == request.auth.uid || isAdmin());
+    allow create: if request.auth != null && request.resource.data.createdBy == request.auth.uid &&
+      (request.resource.data.status == 'pending' || isAdmin());
+    allow update, delete: if isAdmin() ||
+      (resource.data.createdBy == request.auth.uid && resource.data.status == 'pending'
+       && request.resource.data.status == 'pending');
+  }
+
+  // Floors, floor-plan drawings and rooms (same approval rules as places)
+  match /floors/{id} {
+    allow read: if request.auth != null &&
+      (resource.data.status == 'approved' || resource.data.createdBy == request.auth.uid || isAdmin());
+    allow create: if request.auth != null && request.resource.data.createdBy == request.auth.uid &&
+      (request.resource.data.status == 'pending' || isAdmin());
+    allow update, delete: if isAdmin() ||
+      (resource.data.createdBy == request.auth.uid && resource.data.status == 'pending'
+       && request.resource.data.status == 'pending');
+  }
+
+  // "Report a problem" messages — anyone signed in can send one, only admins can read them
+  match /placeReports/{id} {
+    allow create: if request.auth != null && request.resource.data.by == request.auth.uid;
+    allow read, delete: if isAdmin();
+  }
+
+HOW TO MAKE SOMEONE AN ADMIN (do this for yourself and for trusted student leaders)
+-----------------------------------------------------------------------------------
+1. Firebase console -> Authentication -> Users: copy the person's "User UID".
+2. Firestore Database -> Start collection (first time) named:  admins
+3. Document ID = that User UID (paste it exactly). Add any field, e.g.  role = "admin"  -> Save.
+That person will now see the shield button on the map to approve places, floors and reports.
+Admins are for the whole app; if you want one admin per school, tell me and I'll scope it.
