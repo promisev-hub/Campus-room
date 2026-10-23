@@ -1,0 +1,6 @@
+{
+  "rewrites": [
+    { "source": "/Campus-room", "destination": "/" },
+    { "source": "/Campus-room/:path*", "destination": "/:path*" }
+  ]
+}
