@@ -1,0 +1,38 @@
+// Add this inside `match /databases/{database}/documents { ... }` in your Firestore rules.
+// Publish it BEFORE using the feature. Nothing else in your rules needs to change:
+// each person only ever writes their own users/{uid}.friends array.
+
+match /connectTokens/{token} {
+
+  // Look up ONE code by its exact ID (22+ random characters, so it can't be guessed).
+  allow get: if request.auth != null;
+
+  // Listing is limited to your own codes (this is how your phone notices a scan).
+  allow list: if request.auth != null && resource.data.uid == request.auth.uid;
+
+  // Create: only for yourself, brand new and unclaimed. The server clock sets createdAt.
+  allow create: if request.auth != null
+    && request.resource.data.uid == request.auth.uid
+    && request.resource.data.claimed == false
+    && request.resource.data.usedBy == null
+    && request.resource.data.createdAt == request.time
+    && request.resource.data.keys().hasOnly(
+         ['uid','name','username','photoURL','claimed','usedBy','createdAt','expireAt']);
+
+  // Claim: another signed-in user can claim it once, within 2 minutes of creation,
+  // and can change nothing except these three fields.
+  allow update: if request.auth != null
+    && resource.data.claimed == false
+    && resource.data.uid != request.auth.uid
+    && request.time < resource.data.createdAt + duration.value(2, 'm')
+    && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['claimed','usedBy','usedAt'])
+    && request.resource.data.claimed == true
+    && request.resource.data.usedBy == request.auth.uid;
+
+  // Only the owner can delete (the app cleans up after itself).
+  allow delete: if request.auth != null && resource.data.uid == request.auth.uid;
+}
+
+// Optional clean-up: Firebase console → Firestore → TTL → add a policy
+// on collection group `connectTokens`, field `expireAt`.
+// Expired codes are already useless (the rules above refuse them); this only tidies the database.
