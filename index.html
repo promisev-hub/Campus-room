@@ -9474,6 +9474,7 @@ function openItem(k){
 
 const KEY = "cr_nav_mode", HINT = "cr_swipe_hint";
 const ORDER = ["home", "reels", "ter", "chat", "settings"];       // same order as the bottom bar
+window.__crSwipeOrder = ORDER;                                   // lets the nav-bar customiser keep swipe order in sync
 const $ = id => document.getElementById(id);
 const toast = m => (typeof showToast === "function" ? showToast(m) : console.log(m));
 
@@ -11266,5 +11267,362 @@ const _start = window.startApp;
 if(typeof _start === "function"){ window.startApp = function(){ const r = _start.apply(this, arguments); setTimeout(afterStart, 1500); return r; }; }
 
 window.crTapConnect = { open: open, scan: () => open("scan"), redeem: redeem, _host: () => host };
+})();
+</script>
+
+<script id="cr-navbar-js">
+/* ═══════════════════════════════════════════════════════════════
+   CAMPUSROOM — CUSTOMISABLE NAVIGATION BAR
+   Tabs (show/hide + order) · centre button (any tab) · position
+   (bottom / left / right / floating) · size · shape · colours.
+   Open it from: Settings → Nav Bar tile, Appearance → Navigation bar,
+   or by long-pressing the bar itself. Saved on the device and, when
+   signed in, to the account (users/{uid}.navBar).
+═══════════════════════════════════════════════════════════════ */
+(function(){
+"use strict";
+if(window.crNavBar) return;
+
+const KEY = "cr_navbar", HINT = "cr_navbar_hint";
+const $ = id => document.getElementById(id);
+const toast = m => (typeof showToast === "function" ? showToast(m) : console.log(m));
+
+const TABS = { home:["🏠","Home"], reels:["🎬","Reels"], ter:["🧪","TER"], chat:["💬","Chat"], settings:["⚙️","Settings"] };
+const ALL = Object.keys(TABS);
+const POS = [["bottom","⬇️","Bottom"],["left","⬅️","Left"],["right","➡️","Right"],["float","🫧","Floating"]];
+const SIZES = [["sm","Small"],["md","Medium"],["lg","Large"]];
+const SHAPES = [["classic","▬","Classic"],["square","◼","Square"],["rounded","▢","Rounded"],["pill","⬬","Pill"]];
+const SWATCHES = ["#7B00FF","#1E6BFF","#0EA5E9","#0D9488","#16A34A","#CA8A04","#F97316","#E11D48","#EC4899","#111111","#FFFFFF"];
+const COLS = [["bar","Bar colour"],["active","Active tab"],["centre","Centre button"]];
+const MIN_TABS = 3;
+
+const DEF = { order:["home","reels","ter","chat","settings"], hidden:[], centre:"ter", pos:"bottom", size:"md", shape:"classic", labels:true, colors:{ bar:"", active:"", centre:"" } };
+const clone = o => JSON.parse(JSON.stringify(o));
+const hexOK = h => /^#[0-9a-f]{6}$/i.test(h || "");
+const rgb = h => { const n = parseInt(h.slice(1), 16); return [(n >> 16) & 255, (n >> 8) & 255, n & 255]; };
+const lum = h => { const c = rgb(h); return (0.299 * c[0] + 0.587 * c[1] + 0.114 * c[2]) / 255; };
+const mix = (h, w) => "#" + rgb(h).map(v => ("0" + Math.round(v + (255 - v) * w).toString(16)).slice(-2)).join("");
+
+function normalize(j){
+  const c = clone(DEF);
+  if(!j || typeof j !== "object") return c;
+  if(Array.isArray(j.order)){ const o = j.order.filter(x => ALL.includes(x)); ALL.forEach(x => { if(!o.includes(x)) o.push(x); }); c.order = o.filter((x, i) => o.indexOf(x) === i); }
+  if(Array.isArray(j.hidden)) c.hidden = j.hidden.filter(x => ALL.includes(x) && x !== "settings");
+  if(j.centre === null || ALL.includes(j.centre)) c.centre = j.centre;
+  if(POS.some(p => p[0] === j.pos)) c.pos = j.pos;
+  if(SIZES.some(s => s[0] === j.size)) c.size = j.size;
+  if(SHAPES.some(s => s[0] === j.shape)) c.shape = j.shape;
+  if(typeof j.labels === "boolean") c.labels = j.labels;
+  if(j.colors && typeof j.colors === "object") COLS.forEach(k => { if(hexOK(j.colors[k[0]])) c.colors[k[0]] = j.colors[k[0]].toUpperCase(); });
+  if(c.centre) c.hidden = c.hidden.filter(x => x !== c.centre);
+  return c;
+}
+function load(){ let j = null; try{ j = JSON.parse(localStorage.getItem(KEY) || "null"); }catch(e){} return normalize(j); }
+let cfg = load(), saveTimer = null;
+function persist(){
+  try{ localStorage.setItem(KEY, JSON.stringify(cfg)); }catch(e){}
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(() => { try{ if(window.CU && window.CU.uid && window.db){ window.CU.navBar = clone(cfg); window.db.collection("users").doc(window.CU.uid).set({ navBar: cfg }, { merge: true }); } }catch(e){} }, 700);
+}
+
+/* what the bar shows, in order (the centre button sits in the middle) */
+function derived(c){
+  const vis = c.order.filter(t => t !== c.centre && !c.hidden.includes(t));
+  const seq = vis.slice();
+  if(c.centre) seq.splice(Math.floor(vis.length / 2), 0, c.centre);
+  return { vis, seq };
+}
+function curTab(){
+  const el = document.querySelector(".tab.on"); const n = el && el.id ? el.id.replace(/^tab-/, "") : "";
+  return n === "profile" ? "settings" : n;
+}
+
+/* ───────── styles ───────── */
+function buildCSS(){
+  const H = c => c ? "html." + c + " " : "html ";
+  const X = (c, ...l) => l.map(s => H(c) + "#pg-app " + s + "," + H(c) + ".crn-mock " + s).join(",");
+  const B = (c, x) => H(c) + "#pg-app #botnav" + (x || "") + "," + H(c) + ".crn-mock .mbar" + (x || "");
+  const SIDE = c => c.map(k => "html.crn-p-" + k);
+  return `
+html{--crn-h:76px;--crn-c:62px;--crn-ic:21px;--crn-lb:11px;--crn-bw:64px;--crn-bh:60px;--crn-cic:26px;--crn-hr:0px;--crn-cr:50%;--crn-br:0px;--crn-brf:26px;--crn-hla:0}
+html.crn-s-sm{--crn-h:62px;--crn-c:52px;--crn-ic:18px;--crn-lb:10px;--crn-bw:56px;--crn-bh:50px;--crn-cic:22px}
+html.crn-s-lg{--crn-h:92px;--crn-c:72px;--crn-ic:25px;--crn-lb:12px;--crn-bw:72px;--crn-bh:72px;--crn-cic:30px}
+html{--crn-bar-h:var(--crn-h)}
+html.crn-p-float{--crn-bar-h:calc(var(--crn-h) - 12px)}
+html.crn-h-square{--crn-hr:6px;--crn-cr:14px;--crn-br:0px;--crn-brf:10px;--crn-hla:.2}
+html.crn-h-rounded{--crn-hr:14px;--crn-cr:22px;--crn-br:22px;--crn-brf:24px;--crn-hla:.2}
+html.crn-h-pill{--crn-hr:32px;--crn-cr:50%;--crn-br:32px;--crn-brf:42px;--crn-hla:.2}
+.crn-off{display:none!important}
+
+/* the bar */
+${B("")}{height:var(--crn-bar-h);background:var(--crn-bg,var(--bg2));border-radius:var(--crn-br) var(--crn-br) 0 0;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+${X("", ".nb")}{position:relative;width:var(--crn-bw);height:var(--crn-bh);color:var(--crn-off,var(--muted));border-radius:var(--crn-hr)}
+${X("", ".nb:hover", ".nb.on", ".nb.mon")}{color:var(--crn-on,#fff)}
+${X("", ".nb.on", ".nb.mon")}{background:rgba(var(--crn-a-rgb,var(--pr)),var(--crn-hla))}
+${X("", ".ni")}{font-size:calc(var(--crn-ic) * var(--fs,1))}
+${X("", ".nl")}{font-size:calc(var(--crn-lb) * var(--fs,1))}
+html.crn-nolabel #pg-app .nb .nl{font-size:0;line-height:0;position:absolute;top:calc(8px * var(--sp,1));right:calc(10px * var(--sp,1))}
+html.crn-nolabel #pg-app .nb .nl .cr-notify-badge{font-size:calc(10px * var(--fs,1));line-height:1;margin:0}
+html.crn-nolabel .crn-mock .nb .nl{display:none}
+html.crn-nolabel #pg-app .nb .ni,html.crn-nolabel .crn-mock .nb .ni{font-size:calc((var(--crn-ic) + 5px) * var(--fs,1))}
+${X("", ".create-wrapper")}{width:calc(var(--crn-c) + 14px);height:var(--crn-bar-h)}
+${X("", ".create-button")}{width:var(--crn-c);height:var(--crn-c);bottom:calc((var(--crn-bar-h) - var(--crn-c)) / 2 + 17px);border-radius:var(--crn-cr);border-color:var(--crn-bg,var(--bg2));background:var(--crn-centre,linear-gradient(135deg,var(--purple),var(--p2)));color:var(--crn-cfg,#fff);font-size:calc(var(--crn-cic) * var(--fs,1));box-shadow:0 8px 25px rgba(var(--crn-cr-rgb,var(--pr)),.45)}
+${X("", ".create-button.on", ".create-button.mon")}{box-shadow:0 8px 30px rgba(var(--crn-cr-rgb,var(--pr)),.75),0 0 0 2px var(--p3)}
+
+/* floating */
+${B("crn-p-float")}{margin:0 calc(14px * var(--sp,1)) calc(12px + env(safe-area-inset-bottom,0px));padding-bottom:0;border-radius:var(--crn-brf);border:1px solid var(--border);box-shadow:0 12px 32px rgba(0,0,0,.5)}
+
+/* left / right */
+html.crn-p-left #pg-app.show,html.crn-p-right #pg-app.show{display:grid;grid-template-rows:auto minmax(0,1fr);grid-template-columns:auto minmax(0,1fr)}
+html.crn-p-right #pg-app.show{grid-template-columns:minmax(0,1fr) auto}
+html.crn-p-left #pg-app>#topbar,html.crn-p-right #pg-app>#topbar{grid-column:1/-1;grid-row:1}
+html.crn-p-left #pg-app>#content{grid-column:2;grid-row:2;min-height:0}
+html.crn-p-left #pg-app>#botnav{grid-column:1;grid-row:2}
+html.crn-p-right #pg-app>#content{grid-column:1;grid-row:2;min-height:0}
+html.crn-p-right #pg-app>#botnav{grid-column:2;grid-row:2}
+${B("crn-p-left")},${B("crn-p-right")}{flex-direction:column;justify-content:space-around;height:auto;width:calc(var(--crn-bw) + 18px);padding:8px 0 calc(8px + env(safe-area-inset-bottom,0px));gap:4px;border-top:none;overflow-y:auto;scrollbar-width:none}
+${B("crn-p-left")}{border-right:1px solid var(--border);border-radius:0 var(--crn-br) var(--crn-br) 0;box-shadow:6px 0 24px rgba(0,0,0,.35)}
+${B("crn-p-right")}{border-left:1px solid var(--border);border-radius:var(--crn-br) 0 0 var(--crn-br);box-shadow:-6px 0 24px rgba(0,0,0,.35)}
+${X("crn-p-left", ".create-wrapper")},${X("crn-p-right", ".create-wrapper")}{width:100%;height:calc(var(--crn-c) + 14px);flex-shrink:0}
+${X("crn-p-left", ".create-button")},${X("crn-p-right", ".create-button")}{position:relative;bottom:auto;border-width:3px}
+html.crn-p-left #reels-sw .si,html.crn-p-right #reels-sw .si{height:100%!important}
+
+/* editor */
+#crn-pg .cs-note{text-align:left}
+.crn-stage{position:sticky;top:var(--crn-top,62px);z-index:2;background:var(--bg);padding:4px 0 12px;display:flex;justify-content:center}
+.crn-frame{position:relative;width:190px;height:170px;border-radius:18px;border:2px solid var(--border);overflow:hidden;background:var(--bg);box-shadow:0 6px 24px rgba(0,0,0,.35)}
+.crn-mock{position:absolute;left:0;top:0;width:340px;height:304px;transform:scale(.5588);transform-origin:0 0;display:flex;flex-direction:column;background:var(--bg);pointer-events:none;overflow:hidden}
+.crn-mock .mtop{height:40px;flex-shrink:0;background:rgba(10,0,20,.96);border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 14px;font-family:var(--fd);font-weight:800;color:#fff;font-size:14px}
+.crn-mock .mcont{flex:1;min-height:0;padding:12px;display:flex;flex-direction:column;gap:10px;overflow:hidden}
+.crn-mock .mcont i{display:block;height:52px;flex-shrink:0;border-radius:12px;background:var(--card);border:1px solid var(--border)}
+.crn-mock .mbar{flex-shrink:0;position:relative;display:flex;align-items:center;justify-content:space-around;padding:0 12px;border-top:1px solid var(--border);box-shadow:0 -5px 25px rgba(0,0,0,.35)}
+html.crn-p-left .crn-mock,html.crn-p-right .crn-mock{display:grid;grid-template-rows:auto minmax(0,1fr);grid-template-columns:auto minmax(0,1fr)}
+html.crn-p-right .crn-mock{grid-template-columns:minmax(0,1fr) auto}
+html.crn-p-left .crn-mock .mtop,html.crn-p-right .crn-mock .mtop{grid-column:1/-1;grid-row:1}
+html.crn-p-left .crn-mock .mcont{grid-column:2;grid-row:2}
+html.crn-p-left .crn-mock .mbar{grid-column:1;grid-row:2}
+html.crn-p-right .crn-mock .mcont{grid-column:1;grid-row:2}
+html.crn-p-right .crn-mock .mbar{grid-column:2;grid-row:2}
+.crn-trow{display:flex;align-items:center;gap:calc(12px * var(--sp,1));padding:calc(10px * var(--sp,1)) calc(4px * var(--sp,1));border-top:1px solid var(--border);color:var(--off)}
+.crn-trow:first-child{border-top:none}
+.crn-mvs{display:flex;flex-direction:column;gap:2px}
+.crn-mvs button{width:34px;height:22px;border-radius:7px;background:var(--card);border:1px solid var(--border);color:var(--off);font-size:calc(10px * var(--fs,1))}
+.crn-mvs button:disabled{opacity:.3}
+.crn-ti{width:36px;height:36px;border-radius:10px;background:var(--glass);display:flex;align-items:center;justify-content:center;font-size:calc(18px * var(--fs,1));flex-shrink:0}
+.crn-tl{flex:1;font-size:calc(16px * var(--fs,1));font-weight:600}.crn-tl small{display:block;font-size:calc(11.5px * var(--fs,1));color:var(--muted);font-weight:500}
+.crn-tg{-webkit-appearance:none;appearance:none;width:46px;height:28px;border-radius:14px;background:var(--border);position:relative;flex-shrink:0;transition:.2s;border:none;outline:none;cursor:pointer}
+.crn-tg::after{content:"";position:absolute;top:3px;left:3px;width:22px;height:22px;border-radius:50%;background:#fff;transition:.2s}
+.crn-tg:checked{background:var(--purple)}.crn-tg:checked::after{left:21px}.crn-tg:disabled{opacity:.55}
+.crn-chips{display:flex;flex-wrap:wrap;gap:8px}
+.crn-chip{flex:1 1 auto;min-width:74px;padding:calc(10px * var(--sp,1)) calc(8px * var(--sp,1));border-radius:12px;border:1px solid var(--border);background:var(--card);color:var(--off);font-size:calc(13px * var(--fs,1));font-weight:600;display:flex;flex-direction:column;align-items:center;gap:2px}
+.crn-chip span{font-size:calc(20px * var(--fs,1));line-height:1.1}
+.crn-chip.on{background:rgba(var(--pr),.28);border-color:var(--plight)}
+.crn-col{margin-bottom:calc(12px * var(--sp,1))}
+.crn-cl{font-size:calc(14px * var(--fs,1));font-weight:600;color:var(--off);margin-bottom:calc(8px * var(--sp,1))}
+.crn-swrow{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.crn-sw{width:34px;height:34px;border-radius:50%;border:2px solid var(--border);background:var(--c,var(--card));color:var(--off);font-size:calc(15px * var(--fs,1));display:flex;align-items:center;justify-content:center}
+.crn-sw.on{border-color:#fff;box-shadow:0 0 0 2px var(--purple)}
+.crn-cin{width:42px;height:34px;border:none;background:none;padding:0}
+.crn-lrow{display:flex;align-items:center;gap:12px;margin-top:calc(12px * var(--sp,1));color:var(--off);font-size:calc(15px * var(--fs,1));font-weight:600}
+.crn-lrow span{flex:1}
+`;
+}
+const st = document.createElement("style"); st.id = "crn-css"; st.textContent = buildCSS(); document.head.appendChild(st);
+
+/* ───────── apply the saved look to the real bar ───────── */
+function ensureDom(){
+  const nav = $("botnav"); if(!nav) return null;
+  if(!nav.querySelector('.nb[data-t="ter"]')){
+    const b = document.createElement("button"); b.className = "nb"; b.dataset.t = "ter"; b.setAttribute("onclick", "goTab('ter')");
+    b.innerHTML = '<span class="ni">🧪</span><span class="nl">TER</span>'; nav.appendChild(b);
+  }
+  return nav;
+}
+function syncActive(){
+  const nav = $("botnav"); if(!nav) return; const cur = curTab();
+  nav.querySelectorAll(".nb,.create-button").forEach(b => b.classList.toggle("on", b.dataset.t === cur));
+}
+function apply(c){
+  const nav = ensureDom(); if(!nav) return;
+  const d = derived(c), root = document.documentElement, cl = root.classList;
+  [...cl].filter(x => x.indexOf("crn-") === 0).forEach(x => cl.remove(x));
+  cl.add("crn-s-" + c.size, "crn-p-" + c.pos, "crn-h-" + c.shape);
+  if(!c.labels) cl.add("crn-nolabel");
+
+  const set = (k, v) => v ? root.style.setProperty(k, v) : root.style.removeProperty(k);
+  const bar = c.colors.bar, act = c.colors.active, cen = c.colors.centre, light = !!bar && lum(bar) > 0.55;
+  set("--crn-bg", bar);
+  set("--crn-on", act || (light ? "#141414" : ""));
+  set("--crn-off", bar ? (light ? "rgba(20,20,20,.55)" : "rgba(255,255,255,.6)") : "");
+  set("--crn-a-rgb", act ? rgb(act).join(",") : (light ? "20,20,20" : ""));
+  set("--crn-centre", cen ? "linear-gradient(135deg," + cen + "," + mix(cen, 0.22) + ")" : "");
+  set("--crn-cfg", cen ? (lum(cen) > 0.6 ? "#111111" : "#FFFFFF") : "");
+  set("--crn-cr-rgb", cen ? rgb(cen).join(",") : "");
+
+  ALL.forEach(id => {
+    const b = nav.querySelector('.nb[data-t="' + id + '"]'); if(!b) return;
+    b.classList.toggle("crn-off", !d.vis.includes(id)); b.style.order = d.seq.indexOf(id);
+  });
+  const w = nav.querySelector(".create-wrapper"), cb = $("terFab");
+  if(w && cb){
+    if(c.centre){
+      w.classList.remove("crn-off"); w.style.order = d.seq.indexOf(c.centre);
+      cb.dataset.t = c.centre; cb.textContent = TABS[c.centre][0]; cb.setAttribute("aria-label", TABS[c.centre][1]);
+      cb.setAttribute("onclick", "goTab('" + c.centre + "')");
+    }else w.classList.add("crn-off");
+  }
+  /* swipe left/right follows the bar's order */
+  const so = window.__crSwipeOrder; if(so) so.splice(0, so.length, ...d.seq);
+  syncActive();
+}
+
+const _go = window.goTab;
+if(typeof _go === "function"){
+  window.goTab = function(){ const r = _go.apply(this, arguments); try{ syncActive(); }catch(e){} return r; };
+}
+
+/* ───────── the customiser page ───────── */
+function build(){
+  const pg = document.createElement("div"); pg.id = "crn-pg"; pg.className = "cs-pg cr-ov";
+  const chips = (id, a, f) => '<div class="crn-chips" id="' + id + '">' + a.map(f).join("") + "</div>";
+  pg.innerHTML = '<div class="cs-top"><button class="cs-back" aria-label="Back">‹</button><div class="cs-ttl">Navigation bar</div></div><div class="cs-body">' +
+    '<div class="crn-stage"><div class="crn-frame"><div class="crn-mock" id="crn-mock"></div></div></div>' +
+    '<div class="cs-sec">TABS</div><div id="crn-rows"></div><div class="cs-note" id="crn-rownote"></div>' +
+    '<div class="cs-sec">CENTRE BUTTON</div>' +
+    chips("crn-centre", [["none", "🚫", "None"]].concat(ALL.map(k => [k, TABS[k][0], TABS[k][1]])), x => '<button type="button" class="crn-chip" data-c="' + x[0] + '"><span>' + x[1] + "</span>" + x[2] + "</button>") +
+    '<div class="cs-note">The raised middle button. Swap it for any tab, or turn it off.</div>' +
+    '<div class="cs-sec">POSITION</div>' + chips("crn-pos", POS, x => '<button type="button" class="crn-chip" data-p="' + x[0] + '"><span>' + x[1] + "</span>" + x[2] + "</button>") +
+    '<div class="cs-sec">SIZE</div>' + chips("crn-size", SIZES, x => '<button type="button" class="crn-chip" data-s="' + x[0] + '">' + x[1] + "</button>") +
+    '<div class="crn-lrow"><span>Show tab names</span><input type="checkbox" class="crn-tg" id="crn-labels"></div>' +
+    '<div class="cs-sec">SHAPE</div>' + chips("crn-shape", SHAPES, x => '<button type="button" class="crn-chip" data-h="' + x[0] + '"><span>' + x[1] + "</span>" + x[2] + "</button>") +
+    '<div class="cs-sec">COLOURS</div>' +
+    COLS.map(k => '<div class="crn-col" data-k="' + k[0] + '"><div class="crn-cl">' + k[1] + '</div><div class="crn-swrow"><button type="button" class="crn-sw" data-v="" title="Match theme" aria-label="Match theme">↺</button>' +
+      SWATCHES.map(h => '<button type="button" class="crn-sw" data-v="' + h + '" style="--c:' + h + '" aria-label="' + h + '"></button>').join("") +
+      '<input type="color" class="crn-cin" value="#7B00FF" aria-label="Any colour"></div></div>').join("") +
+    '<div class="cs-note">↺ matches your app theme. Text colours adjust automatically.</div>' +
+    '<button class="cs-accbtn" id="crn-reset" style="width:100%;margin-top:14px;flex-direction:row;justify-content:center"><span>↺</span>Reset navigation bar</button>' +
+    '<div class="cs-note">Tip: you can also long-press the bar itself to open this page.</div></div>';
+  pg.querySelector(".cs-back").onclick = () => pg.classList.remove("open");
+  document.body.appendChild(pg);
+
+  function commit(mut){
+    const n = clone(cfg); mut(n); const v = normalize(n), d = derived(v);
+    if(d.seq.length < MIN_TABS || !d.seq.includes("settings")){ toast("Keep at least " + MIN_TABS + " tabs in the bar"); refresh(); return; }
+    cfg = v; apply(cfg); persist(); refresh();
+  }
+  function move(id, dir){
+    commit(n => {
+      const rows = n.order.filter(x => x !== n.centre), i = rows.indexOf(id), k = i + dir;
+      if(i < 0 || k < 0 || k >= rows.length) return;
+      const a = n.order.indexOf(rows[i]), b = n.order.indexOf(rows[k]); const t = n.order[a]; n.order[a] = n.order[b]; n.order[b] = t;
+    });
+  }
+  pg.addEventListener("click", e => {
+    const t = e.target; let b;
+    if((b = t.closest("[data-mv]"))) return move(b.dataset.id, parseInt(b.dataset.mv, 10));
+    if((b = t.closest("[data-c]"))) return commit(n => { n.centre = b.dataset.c === "none" ? null : b.dataset.c; });
+    if((b = t.closest("[data-p]"))) return commit(n => { n.pos = b.dataset.p; });
+    if((b = t.closest("[data-s]"))) return commit(n => { n.size = b.dataset.s; });
+    if((b = t.closest("[data-h]"))) return commit(n => { n.shape = b.dataset.h; });
+    if((b = t.closest(".crn-sw"))) { const k = b.closest(".crn-col").dataset.k; return commit(n => { n.colors[k] = b.dataset.v; }); }
+    if(t.closest("#crn-reset")){ cfg = normalize(null); apply(cfg); persist(); refresh(); toast("Navigation bar reset"); }
+  });
+  pg.addEventListener("change", e => {
+    const t = e.target;
+    if(t.matches("[data-show]")) return commit(n => { if(t.checked) n.hidden = n.hidden.filter(x => x !== t.dataset.show); else if(!n.hidden.includes(t.dataset.show)) n.hidden.push(t.dataset.show); });
+    if(t.id === "crn-labels") return commit(n => { n.labels = t.checked; });
+    if(t.matches(".crn-cin")){ const k = t.closest(".crn-col").dataset.k; commit(n => { n.colors[k] = t.value.toUpperCase(); }); }
+  });
+  pg.addEventListener("input", e => {          /* live preview while dragging the colour wheel */
+    const t = e.target; if(!t.matches(".crn-cin")) return;
+    const k = t.closest(".crn-col").dataset.k, n = clone(cfg); n.colors[k] = t.value.toUpperCase(); cfg = normalize(n); apply(cfg); paintMock();
+  });
+  return pg;
+}
+
+function paintMock(){
+  const m = $("crn-mock"); if(!m) return;
+  const d = derived(cfg), cur = curTab() || "home"; let h = "";
+  d.vis.forEach(id => { h += '<span class="nb' + (id === cur ? " mon" : "") + '" style="order:' + d.seq.indexOf(id) + '"><span class="ni">' + TABS[id][0] + '</span><span class="nl">' + TABS[id][1] + "</span></span>"; });
+  if(cfg.centre) h += '<span class="create-wrapper" style="order:' + d.seq.indexOf(cfg.centre) + '"><span class="create-button' + (cfg.centre === cur ? " mon" : "") + '">' + TABS[cfg.centre][0] + "</span></span>";
+  m.innerHTML = '<div class="mtop">🎓 CampusRoom</div><div class="mcont"><i></i><i></i><i></i></div><nav class="mbar">' + h + "</nav>";
+}
+function refresh(){
+  const pg = $("crn-pg"); if(!pg) return;
+  paintMock();
+  const rows = cfg.order.filter(x => x !== cfg.centre);
+  pg.querySelector("#crn-rows").innerHTML = rows.map((id, i) =>
+    '<div class="crn-trow"><div class="crn-mvs"><button type="button" data-mv="-1" data-id="' + id + '"' + (i === 0 ? " disabled" : "") + ' aria-label="Move up">▲</button><button type="button" data-mv="1" data-id="' + id + '"' + (i === rows.length - 1 ? " disabled" : "") + ' aria-label="Move down">▼</button></div>' +
+    '<span class="crn-ti">' + TABS[id][0] + '</span><div class="crn-tl">' + TABS[id][1] + (id === "settings" ? "<small>Always on, so you can find your way back</small>" : "") + "</div>" +
+    '<input type="checkbox" class="crn-tg" data-show="' + id + '"' + (cfg.hidden.includes(id) ? "" : " checked") + (id === "settings" ? " disabled" : "") + ' aria-label="Show ' + TABS[id][1] + '"></div>').join("");
+  pg.querySelector("#crn-rownote").textContent = cfg.centre ? TABS[cfg.centre][0] + " " + TABS[cfg.centre][1] + " is the centre button, so it isn’t listed here." : "";
+  const mark = (sel, attr, val) => pg.querySelectorAll(sel + " button").forEach(b => b.classList.toggle("on", b.dataset[attr] === val));
+  mark("#crn-centre", "c", cfg.centre || "none"); mark("#crn-pos", "p", cfg.pos); mark("#crn-size", "s", cfg.size); mark("#crn-shape", "h", cfg.shape);
+  pg.querySelector("#crn-labels").checked = cfg.labels;
+  pg.querySelectorAll(".crn-col").forEach(col => {
+    const v = (cfg.colors[col.dataset.k] || "").toLowerCase(), inp = col.querySelector(".crn-cin"); let hit = false;
+    col.querySelectorAll(".crn-sw").forEach(b => { const on = b.dataset.v.toLowerCase() === v; if(on) hit = true; b.classList.toggle("on", on); });
+    if(v && !hit) inp.value = v; inp.classList.toggle("on", !!v && !hit);
+  });
+}
+function open(){
+  if(!window.CU){ toast("Please sign in first"); return; }
+  const pg = $("crn-pg") || build();
+  pg.style.zIndex = (window.crZ = (window.crZ || 650) + 1);
+  pg.classList.add("open"); pg.scrollTop = 0;
+  pg.style.setProperty("--crn-top", pg.querySelector(".cs-top").offsetHeight + "px");
+  refresh();
+}
+
+/* ───────── way 1: long-press the bar ───────── */
+(function(){
+  const nav = $("botnav"); if(!nav) return;
+  let tm = null, sx = 0, sy = 0, fired = false;
+  nav.addEventListener("pointerdown", e => {
+    if(e.pointerType === "mouse" && e.button !== 0) return;
+    fired = false; sx = e.clientX; sy = e.clientY; clearTimeout(tm);
+    tm = setTimeout(() => { fired = true; try{ navigator.vibrate && navigator.vibrate(18); }catch(_){} open(); }, 550);
+  }, { passive: true });
+  nav.addEventListener("pointermove", e => { if(Math.abs(e.clientX - sx) > 10 || Math.abs(e.clientY - sy) > 10) clearTimeout(tm); }, { passive: true });
+  ["pointerup", "pointercancel", "pointerleave"].forEach(ev => nav.addEventListener(ev, () => clearTimeout(tm), { passive: true }));
+  nav.addEventListener("click", e => { if(fired){ e.preventDefault(); e.stopPropagation(); fired = false; } }, true);
+  nav.addEventListener("contextmenu", e => e.preventDefault());
+})();
+
+/* ───────── way 2: Settings tile + Appearance page ───────── */
+function addTile(){
+  const g = document.querySelector("#tab-settings .cs-grid"); if(!g || $("cs-t-navbar")) return;
+  const b = document.createElement("button"); b.className = "cs-tile"; b.id = "cs-t-navbar";
+  b.innerHTML = '<span class="t-ic">🧭</span><span class="t-lb">Nav Bar</span>'; b.onclick = open; g.appendChild(b);
+}
+addTile();
+const ts = $("tab-settings"); if(ts) new MutationObserver(addTile).observe(ts, { childList: true, subtree: true });
+
+const _ui = window.crNavUI;
+window.crNavUI = function(body){
+  if(typeof _ui === "function") _ui.apply(this, arguments);
+  if(!body || body.querySelector("#crn-open")) return;
+  const w = document.createElement("div");
+  w.innerHTML = '<div class="cs-sec">NAVIGATION BAR</div><button class="cs-accbtn" id="crn-open" style="width:100%;flex-direction:row;justify-content:center"><span>🧭</span>Customise navigation bar</button><div class="cs-note">Tabs, order, centre button, position, size, shape and colours.</div>';
+  while(w.firstChild) body.appendChild(w.firstChild);
+  body.querySelector("#crn-open").onclick = open;
+};
+
+/* ───────── per-account sync ───────── */
+const _start = window.startApp;
+if(typeof _start === "function"){
+  window.startApp = function(){
+    const r = _start.apply(this, arguments);
+    try{
+      if(window.CU && window.CU.navBar && typeof window.CU.navBar === "object"){ cfg = normalize(window.CU.navBar); try{ localStorage.setItem(KEY, JSON.stringify(cfg)); }catch(e){} }
+      apply(cfg);
+      setTimeout(() => { try{ if(!localStorage.getItem(HINT)){ localStorage.setItem(HINT, "1"); toast("💡 Long-press the bar to customise it"); } }catch(e){} }, 9000);
+    }catch(e){}
+    return r;
+  };
+}
+
+apply(cfg);
+window.crNavBar = { open, apply: () => apply(cfg), get: () => clone(cfg), reset(){ cfg = normalize(null); apply(cfg); persist(); } };
 })();
 </script>
