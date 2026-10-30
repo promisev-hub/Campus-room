@@ -1,5 +1,5 @@
 // POST /api/send-code   (Authorization: Bearer <Firebase ID token>)
-// Emails a 6-digit code to the signed-in user's account email.
+// Emails a 6-digit code to the signed-in user's account email (via Brevo).
 const { admin, db, hash, cors, authUser, crypto } = require("./_shared");
 
 const COOLDOWN_MS = 45 * 1000;      // minimum gap between emails
@@ -13,10 +13,16 @@ async function sendMail(to, code, name) {
     <p>Hi ${first.replace(/[<>&]/g, "")}, enter this code in the app:</p>
     <p style="font-size:36px;letter-spacing:10px;font-weight:800;background:#f3ecff;border-radius:12px;padding:14px 0;text-align:center;margin:18px 0">${code}</p>
     <p style="color:#666;font-size:13px">It expires in 10 minutes. If you didn't create a CampusRoom account, ignore this email.</p></div>`;
-  const r = await fetch("https://api.resend.com/emails", {   // swap this call to use any other email provider
+  const r = await fetch("https://api.brevo.com/v3/smtp/email", {
     method: "POST",
-    headers: { Authorization: "Bearer " + process.env.RESEND_API_KEY, "Content-Type": "application/json" },
-    body: JSON.stringify({ from: process.env.MAIL_FROM, to: [to], subject: code + " is your CampusRoom code", html, text: "Your CampusRoom verification code is " + code + ". It expires in 10 minutes." })
+    headers: { "api-key": process.env.BREVO_API_KEY, "Content-Type": "application/json", Accept: "application/json" },
+    body: JSON.stringify({
+      sender: { name: "CampusRoom", email: process.env.SENDER_EMAIL },
+      to: [{ email: to }],
+      subject: code + " is your CampusRoom code",
+      htmlContent: html,
+      textContent: "Your CampusRoom verification code is " + code + ". It expires in 10 minutes."
+    })
   });
   if (!r.ok) throw new Error("Email provider error " + r.status + ": " + (await r.text()));
 }
