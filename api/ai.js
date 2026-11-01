@@ -17,13 +17,13 @@
      GEMINI_API_KEY      free key from aistudio.google.com  (main AI)
      GROQ_API_KEY        (optional) free key from console.groq.com — used only if Gemini fails or is busy
      FIREBASE_API_KEY    the "apiKey" value already in your Firebase config in index.html
-     AI_MODEL            (optional) Gemini model, defaults to gemini-2.5-flash
+     AI_MODEL            (optional) Gemini model, defaults to gemini-3.8-flash
      AI_QUIZ_MODEL       (optional) Gemini model for quizzes; defaults to AI_MODEL
      GROQ_MODEL          (optional) defaults to openai/gpt-oss-120b
      ALLOWED_ORIGINS     (optional) comma-separated sites allowed to call this
 */
 
-const MODEL = process.env.AI_MODEL || "gemini-2.5-flash";
+const MODEL = process.env.AI_MODEL || "gemini-3.8-flash";
 const QUIZ_MODEL = process.env.AI_QUIZ_MODEL || MODEL;
 const ORIGINS = (process.env.ALLOWED_ORIGINS || "https://campusroom-delta.vercel.app,https://promisev-hub.github.io")
   .split(",").map(s => s.trim()).filter(Boolean);
@@ -174,7 +174,8 @@ function parseQuiz(raw, type){
 async function gemini(model, system, messages, max, json){
   const gen = { maxOutputTokens: max, temperature: json ? 0.6 : 0.7 };
   if(json) gen.responseMimeType = "application/json";
-  if(/2\.5-flash/.test(model)) gen.thinkingConfig = { thinkingBudget: 0 };   // no hidden "thinking" tokens: faster, and uses less of the free quota
+  if(/gemini-3/.test(model)) gen.thinkingConfig = { thinkingLevel: "low" };    // little hidden "thinking": faster, and uses less of the free quota
+  else if(/2\.5-flash/.test(model)) gen.thinkingConfig = { thinkingBudget: 0 };
   const r = await fetch("https://generativelanguage.googleapis.com/v1beta/models/" + encodeURIComponent(model) + ":generateContent", {
     method: "POST",
     headers: { "content-type": "application/json", "x-goog-api-key": process.env.GEMINI_API_KEY },
@@ -244,7 +245,7 @@ async function quiz(body, res){
     hasText ? "STUDY MATERIAL:\n" + text : (text ? "Topic notes: " + text : ""),
     avoid.length ? "ALREADY ASKED (do not repeat or rephrase any of these):\n- " + avoid.join("\n- ") : ""
   ].filter(Boolean).join("\n\n");
-  const raw = await complete({ model: QUIZ_MODEL, system: quizSystem(type, beyond, hasText), messages: [{ role: "user", content: user }], max: type === "theory" ? 3500 : 2500, json: true });
+  const raw = await complete({ model: QUIZ_MODEL, system: quizSystem(type, beyond, hasText), messages: [{ role: "user", content: user }], max: type === "theory" ? 5500 : 4000, json: true });
   const questions = parseQuiz(raw, type);
   res.status(200).json({ questions });
 }
@@ -268,7 +269,7 @@ module.exports = async function handler(req, res){
 
     const messages = cleanMessages(body.messages);
     if(!messages.length){ res.status(400).json({ error: "Ask me something first." }); return; }
-    const reply = await complete({ model: MODEL, system: systemPrompt(body.context), messages, max: 700 });
+    const reply = await complete({ model: MODEL, system: systemPrompt(body.context), messages, max: 1200 });
     res.status(200).json({ reply });
   }catch(e){
     console.error("ai handler", e);
