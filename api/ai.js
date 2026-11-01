@@ -1,5 +1,5 @@
 /* CampusRoom AI — Vercel serverless function (Node 18+).
-   Put this file at  api/ai.js  in the root of your repo (next to index.html).
+   Put this file at  api/ai.js  in the root of your repo.
 
    POST /api/ai       headers: Authorization: Bearer <Firebase ID token of the signed-in user>
 
@@ -14,19 +14,21 @@
         theory question:    { q, answer }
 
    Vercel → Project → Settings → Environment Variables:
-     ANTHROPIC_API_KEY   your key from console.anthropic.com
+     GEMINI_API_KEY      free key from aistudio.google.com  (main AI)
+     GROQ_API_KEY        (optional) free key from console.groq.com — used only if Gemini fails or is busy
      FIREBASE_API_KEY    the "apiKey" value already in your Firebase config in index.html
-     AI_MODEL            (optional) defaults to claude-haiku-5-5
-     AI_QUIZ_MODEL       (optional) model used for quizzes; defaults to AI_MODEL
+     AI_MODEL            (optional) Gemini model, defaults to gemini-2.5-flash
+     AI_QUIZ_MODEL       (optional) Gemini model for quizzes; defaults to AI_MODEL
+     GROQ_MODEL          (optional) defaults to openai/gpt-oss-120b
      ALLOWED_ORIGINS     (optional) comma-separated sites allowed to call this
 */
 
-const MODEL = process.env.AI_MODEL || "claude-haiku-5-5";
+const MODEL = process.env.AI_MODEL || "gemini-2.5-flash";
 const QUIZ_MODEL = process.env.AI_QUIZ_MODEL || MODEL;
 const ORIGINS = (process.env.ALLOWED_ORIGINS || "https://campusroom-delta.vercel.app,https://promisev-hub.github.io")
   .split(",").map(s => s.trim()).filter(Boolean);
 const WINDOW_MS = 10 * 60 * 1000;
-const LIMITS = { chat: 25, quiz: 40 };                 // per person per 10 minutes (per warm server)
+const LIMITS = { chat: 20, quiz: 12 };                 // per person per 10 minutes (per warm server) — kept low so the free daily quota lasts
 const hits = new Map();
 
 function cors(req, res){
@@ -84,6 +86,18 @@ function cleanMessages(list){
     if(content) out.push({ role: m.role, content });
   });
   while(out.length && out[0].role !== "user") out.shift();       // the conversation must start with the student
+  return out;
+}
+
+/* merges back-to-back messages from the same side and makes sure the last message is the student's */
+function alternate(list){
+  const out = [];
+  list.forEach(m => {
+    const last = out[out.length - 1];
+    if(last && last.role === m.role) last.content += "\n\n" + m.content;
+    else out.push({ role: m.role, content: m.content });
+  });
+  while(out.length && out[out.length - 1].role !== "user") out.pop();
   return out;
 }
 
@@ -156,16 +170,63 @@ function parseQuiz(raw, type){
   return out;
 }
 
-async function anthropic(body){
-  const r = await fetch("https://api.anthropic.com/v1/messages", {
+/* ───────────── AI providers ───────────── */
+async function gemini(model, system, messages, max, json){
+  const gen = { maxOutputTokens: max, temperature: json ? 0.6 : 0.7 };
+  if(json) gen.responseMimeType = "application/json";
+  if(/2\.5-flash/.test(model)) gen.thinkingConfig = { thinkingBudget: 0 };   // no hidden "thinking" tokens: faster, and uses less of the free quota
+  const r = await fetch("https://generativelanguage.googleapis.com/v1beta/models/" + encodeURIComponent(model) + ":generateContent", {
     method: "POST",
-    headers: { "content-type": "application/json", "x-api-key": process.env.ANTHROPIC_API_KEY, "anthropic-version": "2023-06-01" },
+    headers: { "content-type": "application/json", "x-goog-api-key": process.env.GEMINI_API_KEY },
+    body: JSON.stringify({
+      systemInstruction: { parts: [{ text: system }] },
+      contents: messages.map(m => ({ role: m.role === "assistant" ? "model" : "user", parts: [{ text: m.content }] })),
+      generationConfig: gen
+    })
+  });
+  const d = await r.json().catch(() => ({}));
+  if(!r.ok) return { ok: false, status: r.status, err: d.error };
+  const c = d.candidates && d.candidates[0];
+  const parts = c && c.content && Array.isArray(c.content.parts) ? c.content.parts : [];
+  return { ok: true, text: parts.filter(p => !p.thought).map(p => p.text || "").join("\n").trim() };
+}
+
+async function groq(system, messages, max){
+  const model = process.env.GROQ_MODEL || "openai/gpt-oss-120b";
+  const body = { model, max_completion_tokens: max, temperature: 0.6, messages: [{ role: "system", content: system }].concat(messages) };
+  if(/gpt-oss/.test(model)) body.reasoning_effort = "low";
+  const r = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+    method: "POST",
+    headers: { "content-type": "application/json", authorization: "Bearer " + process.env.GROQ_API_KEY },
     body: JSON.stringify(body)
   });
   const d = await r.json().catch(() => ({}));
-  return { ok: r.ok, status: r.status, data: d };
+  if(!r.ok) return { ok: false, status: r.status, err: d.error };
+  const m = d.choices && d.choices[0] && d.choices[0].message;
+  return { ok: true, text: m ? String(m.content || "").trim() : "" };
 }
-const textOf = d => (d.content || []).filter(b => b.type === "text").map(b => b.text).join("\n").trim();
+
+/* tries Gemini first, then Groq (if you added a Groq key). Throws if both fail. */
+async function complete(o){
+  const messages = alternate(o.messages);
+  if(!messages.length){ const e = new Error("no messages"); e.ai = true; throw e; }
+  let last = null;
+  if(process.env.GEMINI_API_KEY){
+    const r = await gemini(o.model, o.system, messages, o.max, !!o.json);
+    if(r.ok && r.text) return r.text;
+    console.error("Gemini error", r.status, r.err || "(empty reply)");
+    last = r;
+  }
+  if(process.env.GROQ_API_KEY){
+    const r = await groq(o.system, messages, o.max + 1000);   // extra room because gpt-oss spends some tokens on reasoning
+    if(r.ok && r.text) return r.text;
+    console.error("Groq error", r.status, r.err || "(empty reply)");
+    last = r;
+  }
+  const e = new Error("ai failed");
+  e.ai = true; e.busy = !!(last && last.status === 429);
+  throw e;
+}
 
 async function quiz(body, res){
   const type = body.type === "theory" ? "theory" : "objective";
@@ -183,9 +244,8 @@ async function quiz(body, res){
     hasText ? "STUDY MATERIAL:\n" + text : (text ? "Topic notes: " + text : ""),
     avoid.length ? "ALREADY ASKED (do not repeat or rephrase any of these):\n- " + avoid.join("\n- ") : ""
   ].filter(Boolean).join("\n\n");
-  const r = await anthropic({ model: QUIZ_MODEL, max_tokens: type === "theory" ? 3500 : 2500, system: quizSystem(type, beyond, hasText), messages: [{ role: "user", content: user }] });
-  if(!r.ok){ console.error("Anthropic quiz error", r.status, r.data && r.data.error); res.status(502).json({ error: "The AI had a problem. Please try again." }); return; }
-  const questions = parseQuiz(textOf(r.data), type);
+  const raw = await complete({ model: QUIZ_MODEL, system: quizSystem(type, beyond, hasText), messages: [{ role: "user", content: user }], max: type === "theory" ? 3500 : 2500, json: true });
+  const questions = parseQuiz(raw, type);
   res.status(200).json({ questions });
 }
 
@@ -202,25 +262,22 @@ module.exports = async function handler(req, res){
     const body = typeof req.body === "string" ? JSON.parse(req.body || "{}") : (req.body || {});
     const mode = body.mode === "quiz" ? "quiz" : "chat";
     if(tooMany(uid, mode)){ res.status(429).json({ error: "You're asking very fast — wait a few minutes and try again." }); return; }
-    if(!process.env.ANTHROPIC_API_KEY){ console.error("ANTHROPIC_API_KEY is not set"); res.status(503).json({ error: "The AI is still being set up. Please try again later." }); return; }
+    if(!process.env.GEMINI_API_KEY && !process.env.GROQ_API_KEY){ console.error("No AI key set (GEMINI_API_KEY or GROQ_API_KEY)"); res.status(503).json({ error: "The AI is still being set up. Please try again later." }); return; }
 
     if(mode === "quiz"){ await quiz(body, res); return; }
 
     const messages = cleanMessages(body.messages);
     if(!messages.length){ res.status(400).json({ error: "Ask me something first." }); return; }
-    const r = await anthropic({ model: MODEL, max_tokens: 700, system: systemPrompt(body.context), messages });
-    if(!r.ok){
-      console.error("Anthropic error", r.status, r.data && r.data.error);
-      res.status(502).json({ error: "The AI had a problem. Please try again." });
-      return;
-    }
-    const reply = textOf(r.data);
-    if(!reply){ res.status(502).json({ error: "The AI didn't answer. Please try again." }); return; }
+    const reply = await complete({ model: MODEL, system: systemPrompt(body.context), messages, max: 700 });
     res.status(200).json({ reply });
   }catch(e){
     console.error("ai handler", e);
+    if(e && e.ai){
+      res.status(502).json({ error: e.busy ? "The AI is very busy right now. Please try again in a little while." : "The AI had a problem. Please try again." });
+      return;
+    }
     res.status(500).json({ error: "Something went wrong. Please try again." });
   }
 };
 
-module.exports._test = { cleanMessages, systemPrompt, parseQuiz, quizSystem };
+module.exports._test = { cleanMessages, alternate, systemPrompt, parseQuiz, quizSystem };
