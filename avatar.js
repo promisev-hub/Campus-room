@@ -235,7 +235,7 @@
   function inject(){
     document.querySelectorAll(".settings-change-pic").forEach(el => {
       if(el.dataset.crAv) return; el.dataset.crAv = "1";
-      const b = document.createElement("div"); b.className = "settings-change-pic"; b.textContent = "🎭 Create Avatar"; b.style.marginTop = "8px";
+      const b = document.createElement("div"); b.className = "settings-change-pic"; b.dataset.crAv = "1"; b.textContent = "🎭 Create Avatar"; b.style.marginTop = "8px";
       b.addEventListener("click", open); el.insertAdjacentElement("afterend", b);
     });
     const p = $("pic-progress");
