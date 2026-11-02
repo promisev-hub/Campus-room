@@ -1,0 +1,728 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>CampusRoom CBT Quiz</title>
+
+<style>
+/* ==========================================================
+   CBT QUIZ STYLES  (copy from here ...)
+   Everything is scoped under .cbt so it cannot clash with
+   the rest of CampusRoom.
+   ========================================================== */
+.cbt{
+  --bg:#0d0f14; --surface:#161a22; --surface-2:#1d222c; --line:#2b313d;
+  --text:#e8ebf1; --muted:#8e96a6; --accent:#4f8cff; --on-accent:#ffffff;
+  --ok:#2fbf71; --warn:#f0a43a; --bad:#ef5b5b;
+  --accent-soft:rgba(79,140,255,.16); --ok-soft:rgba(47,191,113,.16);
+  --warn-soft:rgba(240,164,58,.16); --bad-soft:rgba(239,91,91,.16);
+  position:fixed; inset:0; z-index:9999;
+  display:flex; flex-direction:column;
+  height:100vh; height:100dvh;
+  background:var(--bg); color:var(--text);
+  font:16px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+}
+.cbt[data-theme="light"]{
+  --bg:#f2f4f8; --surface:#ffffff; --surface-2:#f6f8fb; --line:#d8dde8;
+  --text:#141821; --muted:#5b6475; --accent:#2457e6;
+  --ok:#0f7d47; --warn:#a96300; --bad:#cc3030;
+}
+@supports (color:color-mix(in srgb,red,blue)){
+  .cbt{
+    --accent-soft:color-mix(in srgb,var(--accent) 16%,transparent);
+    --ok-soft:color-mix(in srgb,var(--ok) 16%,transparent);
+    --warn-soft:color-mix(in srgb,var(--warn) 16%,transparent);
+    --bad-soft:color-mix(in srgb,var(--bad) 16%,transparent);
+  }
+}
+.cbt *,.cbt *::before,.cbt *::after{box-sizing:border-box}
+.cbt button{font:inherit;color:inherit;cursor:pointer;-webkit-tap-highlight-color:transparent}
+.cbt button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+/* ---- top bar ---- */
+.cbt__bar{
+  display:flex; align-items:center; gap:10px; flex:none;
+  padding:max(10px,env(safe-area-inset-top)) 14px 10px;
+  border-bottom:1px solid var(--line); background:var(--bg);
+}
+.cbt__grow{flex:1}
+.cbt__title{font-size:18px}
+.cbt__timer{
+  display:flex; align-items:center; gap:8px;
+  padding:6px 14px 6px 10px; border-radius:999px;
+  background:var(--surface); border:1.5px solid var(--line);
+  font-size:20px; font-weight:700; font-variant-numeric:tabular-nums;
+}
+.cbt__timer.is-low{color:var(--warn);border-color:var(--warn);background:var(--warn-soft)}
+.cbt__timer.is-critical{color:var(--bad);border-color:var(--bad);background:var(--bad-soft);animation:cbt-pulse 1s steps(2,jump-none) infinite}
+@keyframes cbt-pulse{50%{opacity:.6}}
+@media (prefers-reduced-motion:reduce){.cbt__timer.is-critical{animation:none}}
+.cbt__ico{display:inline-flex}
+.cbt__btn{
+  height:44px; padding:0 18px; border-radius:12px;
+  border:1.5px solid var(--line); background:var(--surface); font-weight:600;
+}
+.cbt__btn--primary{background:var(--accent);border-color:var(--accent);color:var(--on-accent)}
+.cbt__btn--ghost{background:transparent;border-color:transparent;color:var(--muted)}
+.cbt__btn:disabled{opacity:.4;cursor:default}
+.cbt__iconbtn{
+  width:44px; height:44px; display:grid; place-items:center;
+  border-radius:12px; border:1.5px solid var(--line); background:var(--surface);
+}
+
+/* ---- scrolling body ---- */
+.cbt__main{
+  flex:1; overflow-y:auto; overscroll-behavior:contain;
+  padding:14px 14px max(28px,env(safe-area-inset-bottom));
+}
+.cbt__main > *{max-width:720px;margin-inline:auto}
+.cbt__main > * + *{margin-top:18px}
+
+/* ---- question box ---- */
+.cbt__card{
+  background:var(--surface); border:1.5px solid var(--line);
+  border-radius:24px; padding:18px;
+}
+.cbt__cardhead{display:flex;align-items:flex-start;justify-content:space-between;gap:10px}
+.cbt__qno{font-weight:700}
+.cbt__subject{color:var(--muted);font-size:14px}
+.cbt__flag{
+  display:inline-flex; align-items:center; gap:6px; height:36px; padding:0 12px;
+  border-radius:999px; border:1.5px solid var(--line); background:var(--surface-2);
+  color:var(--muted); font-size:14px; font-weight:600;
+}
+.cbt__flag.is-on{color:var(--warn);border-color:var(--warn);background:var(--warn-soft)}
+.cbt__q{
+  margin:16px 0 18px; font-size:19px; font-weight:600; line-height:1.5;
+  white-space:pre-wrap; overflow-wrap:anywhere;
+}
+.cbt__opts{display:grid;gap:10px}
+.cbt__opt{
+  display:flex; align-items:center; gap:14px; width:100%; min-height:56px;
+  padding:8px 14px 8px 8px; text-align:left;
+  border-radius:18px; border:1.5px solid var(--line); background:var(--surface-2);
+}
+.cbt__letter{
+  flex:none; display:grid; place-items:center; width:40px; height:40px;
+  border-radius:50%; border:1.5px solid var(--line); background:var(--surface);
+  font-weight:700; font-size:15px;
+}
+.cbt__opttext{flex:1;overflow-wrap:anywhere}
+.cbt__opt.is-picked{border-color:var(--accent);background:var(--accent-soft)}
+.cbt__opt.is-picked .cbt__letter{background:var(--accent);border-color:var(--accent);color:var(--on-accent)}
+.cbt__opt:disabled{cursor:default}
+.cbt__opt.is-correct{border-color:var(--ok);background:var(--ok-soft)}
+.cbt__opt.is-correct .cbt__letter{background:var(--ok);border-color:var(--ok);color:#fff}
+.cbt__opt.is-wrong{border-color:var(--bad);background:var(--bad-soft)}
+.cbt__opt.is-wrong .cbt__letter{background:var(--bad);border-color:var(--bad);color:#fff}
+.cbt__verdict{margin:14px 0 0;font-weight:700}
+.cbt__explain{margin:10px 0 0;padding:12px 14px;border-radius:14px;background:var(--surface-2);font-size:15px}
+.cbt__foot{display:flex;gap:10px;margin-top:18px}
+.cbt__foot .cbt__btn{flex:1}
+
+/* ---- question number navigator ---- */
+.cbt__navhead{display:flex;align-items:baseline;justify-content:space-between;gap:10px;margin-bottom:10px}
+.cbt__muted{color:var(--muted);font-size:14px}
+.cbt__grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(46px,1fr));gap:8px}
+.cbt__num{
+  position:relative; height:46px; border-radius:12px;
+  border:1.5px solid var(--line); background:var(--surface);
+  font-weight:600; font-variant-numeric:tabular-nums;
+}
+.cbt__num.is-done{background:var(--ok-soft);border-color:var(--ok);color:var(--ok)}
+.cbt__num.is-correct{background:var(--ok-soft);border-color:var(--ok);color:var(--ok)}
+.cbt__num.is-wrong{background:var(--bad-soft);border-color:var(--bad);color:var(--bad)}
+.cbt__num.is-skipped{border-style:dashed;color:var(--muted)}
+.cbt__num.is-current{box-shadow:0 0 0 2px var(--bg),0 0 0 4px var(--accent)}
+.cbt__num.is-flagged::after{
+  content:""; position:absolute; top:-5px; right:-5px; width:14px; height:14px;
+  border-radius:50%; background:var(--warn); border:2px solid var(--bg);
+}
+.cbt__legend{display:flex;flex-wrap:wrap;gap:6px 16px;margin-top:12px;color:var(--muted);font-size:13px}
+.cbt__legenditem{display:inline-flex;align-items:center;gap:6px}
+.cbt__swatch{width:14px;height:14px;border-radius:4px;border:1.5px solid var(--line);background:var(--surface)}
+.cbt__swatch.is-done,.cbt__swatch.is-correct{background:var(--ok-soft);border-color:var(--ok)}
+.cbt__swatch.is-wrong{background:var(--bad-soft);border-color:var(--bad)}
+.cbt__swatch.is-skipped{border-style:dashed}
+.cbt__swatch.is-flagged{background:var(--warn);border-color:var(--warn);border-radius:50%}
+
+/* ---- results ---- */
+.cbt__summary{text-align:center}
+.cbt__timeup{margin:0 0 10px;color:var(--warn);font-weight:700}
+.cbt__score{font-size:56px;font-weight:800;line-height:1.1;font-variant-numeric:tabular-nums}
+.cbt__pct{font-size:20px;font-weight:700;color:var(--accent);margin-bottom:6px}
+.cbt__summary .cbt__btn{margin-top:16px;width:100%}
+
+/* ---- dialog + calculator sheet ---- */
+.cbt__scrim{position:absolute;inset:0;z-index:5;display:flex;background:rgba(0,0,0,.55)}
+.cbt__scrim--bottom{align-items:flex-end;justify-content:center}
+.cbt__scrim--center{align-items:center;justify-content:center;padding:20px}
+.cbt__dialog{
+  width:100%; max-width:380px; padding:20px; border-radius:22px;
+  background:var(--surface); border:1.5px solid var(--line);
+}
+.cbt__dtitle{margin:0 0 6px;font-size:19px}
+.cbt__dbody{margin:0 0 18px;color:var(--muted)}
+.cbt__drow{display:flex;gap:10px}
+.cbt__drow .cbt__btn{flex:1}
+
+.cbt__calc{
+  width:100%; max-width:400px; background:var(--surface);
+  border:1.5px solid var(--line); border-bottom:0; border-radius:26px 26px 0 0;
+  padding:12px 14px max(14px,env(safe-area-inset-bottom));
+}
+.cbt__calchead{display:flex;align-items:center;justify-content:space-between}
+.cbt__screen{
+  margin:8px 0 12px; padding:10px 14px; text-align:right;
+  background:var(--bg); border:1.5px solid var(--line); border-radius:16px;
+}
+.cbt__calctop{min-height:20px;color:var(--muted);font-size:14px;white-space:nowrap;overflow-x:auto}
+.cbt__calcout{font-size:34px;font-weight:600;white-space:nowrap;overflow-x:auto;font-variant-numeric:tabular-nums}
+.cbt__pad{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.cbt__ck{
+  height:52px; border-radius:14px; border:1.5px solid var(--line);
+  background:var(--surface-2); font-size:20px; font-weight:600;
+}
+.cbt__ck--fn{color:var(--muted);background:var(--bg)}
+.cbt__ck--op{color:var(--accent)}
+.cbt__ck--eq{background:var(--accent);border-color:var(--accent);color:var(--on-accent)}
+.cbt__ck:active{filter:brightness(1.25)}
+/* ==========================================================
+   ... to here
+   ========================================================== */
+
+/* demo page only (do not copy) */
+body{margin:0;min-height:100vh;display:grid;place-items:center;font-family:system-ui,sans-serif;background:#0d0f14;color:#e8ebf1}
+.demo{text-align:center;padding:24px}
+.demo button{height:48px;padding:0 24px;border-radius:14px;border:0;background:#4f8cff;color:#fff;font:600 16px system-ui}
+</style>
+</head>
+<body>
+
+<div class="demo">
+  <h1>CBT quiz preview</h1>
+  <p>20 questions, 10 minutes.</p>
+  <button id="startDemo" type="button">Start practice test</button>
+</div>
+
+<script>
+/* ==========================================================
+   CBT QUIZ MODULE  (copy from here ...)
+
+   Usage:
+     CBTQuiz.start({
+       title: 'Mathematics practice',
+       questions: [
+         { q:'If tan θ = 4/3 ...', options:['5/4','4/5','3/5','3/4'],
+           answer:1, subject:'Mathematics', explanation:'optional' }
+       ],
+       durationMinutes: 60,          // quiz stops the moment this hits 0
+       theme: 'dark',                // 'dark' or 'light'
+       accent: '#4f8cff',            // optional, the user's app colour
+       onFinish: function(result){}, // save to Firestore here
+       onClose:  function(result){}  // called when the quiz screen closes
+     });
+   ========================================================== */
+(function (global) {
+  'use strict';
+
+  var LETTERS = 'ABCDEFGH';
+
+  /* ---------- small helpers ---------- */
+  function h(tag, cls, text) {
+    var n = document.createElement(tag);
+    if (cls) n.className = cls;
+    if (text != null) n.textContent = text;
+    return n;
+  }
+  function button(text, onclick, cls) {
+    var b = h('button', cls || 'cbt__btn', text);
+    b.type = 'button';
+    if (onclick) b.onclick = onclick;
+    return b;
+  }
+  function icon(inner) {
+    var s = h('span', 'cbt__ico');
+    s.innerHTML = '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" ' +
+      'stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + inner + '</svg>';
+    return s;
+  }
+  var ICON_CLOCK = '<circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.5 2"/><path d="M9 2h6"/>';
+  var ICON_CALC = '<rect x="5" y="2.5" width="14" height="19" rx="2.5"/><path d="M8.5 7h7"/>' +
+    '<path d="M8.5 12h.01M12 12h.01M15.5 12h.01M8.5 16h.01M12 16h.01M15.5 16h.01"/>';
+  var ICON_FLAG = '<path d="M5 21V4"/><path d="M5 4h12l-2 4 2 4H5"/>';
+
+  function fmtTime(s) {
+    s = Math.max(0, s);
+    var hrs = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), x = s % 60;
+    var mm = String(m).padStart(2, '0'), ss = String(x).padStart(2, '0');
+    return hrs ? hrs + ':' + mm + ':' + ss : mm + ':' + ss;
+  }
+
+  /* ---------- calculator engine (no eval) ---------- */
+  function calcEval(src) {
+    var t = src.match(/\d+\.?\d*|\.\d+|[+\-×÷()%√²π]/g) || [];
+    var i = 0;
+    function peek() { return t[i]; }
+    function next() { return t[i++]; }
+    function expr() {
+      var v = term();
+      while (peek() === '+' || peek() === '-') {
+        var op = next(), r = term();
+        v = op === '+' ? v + r : v - r;
+      }
+      return v;
+    }
+    function term() {
+      var v = unary();
+      for (;;) {
+        var p = peek();
+        if (p === '×' || p === '÷') { next(); var r = unary(); v = p === '×' ? v * r : v / r; }
+        else if (p === '(' || p === 'π' || p === '√') { v *= unary(); } /* 2(3), 2π, 2√9 */
+        else break;
+      }
+      return v;
+    }
+    function unary() {
+      var p = peek();
+      if (p === '-') { next(); return -unary(); }
+      if (p === '+') { next(); return unary(); }
+      if (p === '√') { next(); var v = unary(); if (v < 0) throw new Error('neg'); return Math.sqrt(v); }
+      return post();
+    }
+    function post() {
+      var v = prim();
+      while (peek() === '%' || peek() === '²') { v = next() === '%' ? v / 100 : v * v; }
+      return v;
+    }
+    function prim() {
+      var p = next();
+      if (p === undefined) throw new Error('end');
+      if (p === '(') { var v = expr(); if (next() !== ')') throw new Error('paren'); return v; }
+      if (p === 'π') return Math.PI;
+      if (/^[\d.]/.test(p)) return parseFloat(p);
+      throw new Error('token');
+    }
+    var out = expr();
+    if (i < t.length || !isFinite(out)) throw new Error('bad');
+    return out;
+  }
+
+  var KEYS = [
+    ['C', 'C', 'fn'], ['⌫', 'back', 'fn'], ['(', '('], [')', ')'],
+    ['√', '√', 'fn'], ['x²', '²', 'fn'], ['π', 'π', 'fn'], ['÷', '÷', 'op'],
+    ['7', '7'], ['8', '8'], ['9', '9'], ['×', '×', 'op'],
+    ['4', '4'], ['5', '5'], ['6', '6'], ['−', '-', 'op'],
+    ['1', '1'], ['2', '2'], ['3', '3'], ['+', '+', 'op'],
+    ['0', '0'], ['.', '.'], ['%', '%', 'fn'], ['=', '=', 'eq']
+  ];
+
+  /* ---------- the quiz ---------- */
+  function start(opts) {
+    var qs = (opts && opts.questions) || [];
+    var total = qs.length;
+    if (!total) return null;
+
+    var minutes = opts.durationMinutes || Math.max(1, total);
+    var S = {
+      mode: 'exam',               /* 'exam' | 'result' | 'review' */
+      i: 0,
+      answers: new Array(total).fill(null),
+      flags: new Set(),
+      startedAt: Date.now(),
+      endAt: Date.now() + minutes * 60000,
+      result: null,
+      calcOpen: false
+    };
+    var calc = { expr: '', last: '', result: '', fresh: false };
+
+    var root = h('div', 'cbt');
+    root.dataset.theme = opts.theme === 'light' ? 'light' : 'dark';
+    if (opts.accent) root.style.setProperty('--accent', opts.accent);
+    root.setAttribute('role', 'dialog');
+    root.setAttribute('aria-modal', 'true');
+    root.setAttribute('aria-label', opts.title || 'Quiz');
+    var bar = h('header', 'cbt__bar');
+    var main = h('main', 'cbt__main');
+    root.append(bar, main);
+    document.body.append(root);
+    var prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+
+    /* ----- timer ----- */
+    var timerEl = null;
+    function remaining() { return Math.max(0, Math.ceil((S.endAt - Date.now()) / 1000)); }
+    function paintTimer() {
+      if (!timerEl) return;
+      var r = remaining();
+      timerEl.querySelector('.cbt__time').textContent = fmtTime(r);
+      timerEl.classList.toggle('is-low', r <= 300 && r > 60);
+      timerEl.classList.toggle('is-critical', r <= 60);
+    }
+    var tick = setInterval(function () {
+      if (S.mode === 'exam' && remaining() === 0) { finish(true); return; }
+      paintTimer();
+    }, 250);
+
+    /* ----- top bar ----- */
+    function renderBar() {
+      bar.textContent = '';
+      if (S.mode === 'exam') {
+        timerEl = h('div', 'cbt__timer');
+        timerEl.setAttribute('role', 'timer');
+        timerEl.setAttribute('aria-label', 'Time left');
+        timerEl.append(icon(ICON_CLOCK), h('span', 'cbt__time'));
+        var cb = h('button', 'cbt__iconbtn');
+        cb.type = 'button';
+        cb.setAttribute('aria-label', 'Open calculator');
+        cb.append(icon(ICON_CALC));
+        cb.onclick = function () { toggleCalc(true); };
+        bar.append(timerEl, h('div', 'cbt__grow'), cb, button('Submit', askSubmit, 'cbt__btn cbt__btn--primary'));
+        paintTimer();
+      } else {
+        timerEl = null;
+        bar.append(h('strong', 'cbt__title', S.mode === 'review' ? 'Review' : 'Results'), h('div', 'cbt__grow'));
+        if (S.mode === 'review') {
+          bar.append(button('Back to results', function () { S.mode = 'result'; render(); }));
+        }
+        bar.append(button('Close', close, 'cbt__btn cbt__btn--primary'));
+      }
+    }
+
+    /* ----- question box ----- */
+    function renderQuestion() {
+      var q = qs[S.i], review = S.mode === 'review', picked = S.answers[S.i];
+      var card = h('section', 'cbt__card');
+
+      var head = h('div', 'cbt__cardhead');
+      var left = h('div');
+      left.append(h('div', 'cbt__qno', 'Question ' + (S.i + 1) + ' of ' + total));
+      if (q.subject) left.append(h('div', 'cbt__subject', q.subject));
+      head.append(left);
+      if (!review) {
+        var f = h('button', 'cbt__flag' + (S.flags.has(S.i) ? ' is-on' : ''));
+        f.type = 'button';
+        f.setAttribute('aria-pressed', String(S.flags.has(S.i)));
+        f.append(icon(ICON_FLAG), h('span', null, 'Flag'));
+        f.onclick = function () {
+          if (S.flags.has(S.i)) S.flags.delete(S.i); else S.flags.add(S.i);
+          renderMain(true);
+        };
+        head.append(f);
+      }
+      card.append(head, h('p', 'cbt__q', q.q));
+
+      var group = h('div', 'cbt__opts');
+      group.setAttribute('role', 'radiogroup');
+      group.setAttribute('aria-label', 'Answer options');
+      q.options.forEach(function (txt, k) {
+        var b = h('button', 'cbt__opt');
+        b.type = 'button';
+        b.setAttribute('role', 'radio');
+        b.setAttribute('aria-checked', String(picked === k));
+        b.append(h('span', 'cbt__letter', LETTERS[k]), h('span', 'cbt__opttext', txt));
+        if (review) {
+          b.disabled = true;
+          if (k === q.answer) b.classList.add('is-correct');
+          else if (picked === k) b.classList.add('is-wrong');
+        } else {
+          if (picked === k) b.classList.add('is-picked');
+          b.onclick = function () { choose(k); };
+        }
+        group.append(b);
+      });
+      card.append(group);
+
+      if (review) {
+        var right = LETTERS[q.answer];
+        var verdict = picked === q.answer ? 'Correct'
+          : picked === null ? 'Not answered. The correct answer is ' + right + '.'
+          : 'Wrong. The correct answer is ' + right + '.';
+        card.append(h('p', 'cbt__verdict', verdict));
+        if (q.explanation) {
+          var ex = h('p', 'cbt__explain');
+          ex.append(h('strong', null, 'Explanation: '), document.createTextNode(q.explanation));
+          card.append(ex);
+        }
+      }
+
+      var last = S.i === total - 1;
+      var foot = h('div', 'cbt__foot');
+      var prev = button('Previous', function () { go(S.i - 1); });
+      prev.disabled = S.i === 0;
+      var nextBtn = button(last && !review ? 'Finish' : 'Next', function () {
+        if (last) { if (!review) askSubmit(); } else go(S.i + 1);
+      }, 'cbt__btn cbt__btn--primary');
+      if (last && review) nextBtn.disabled = true;
+      foot.append(prev, nextBtn);
+      card.append(foot);
+      return card;
+    }
+
+    /* ----- question numbers (colour-coded) ----- */
+    function renderNav() {
+      var graded = S.mode !== 'exam';
+      var wrap = h('section', 'cbt__nav');
+      var head = h('div', 'cbt__navhead');
+      if (graded) {
+        head.append(h('strong', null, 'Tap a question to review it'));
+      } else {
+        var done = S.answers.filter(function (a) { return a !== null; }).length;
+        head.append(h('strong', null, 'Questions'), h('span', 'cbt__muted', done + ' of ' + total + ' answered'));
+      }
+      var grid = h('div', 'cbt__grid');
+      var words = { open: 'not answered', done: 'answered', correct: 'correct', wrong: 'wrong', skipped: 'skipped' };
+      qs.forEach(function (q, n) {
+        var a = S.answers[n], state;
+        if (graded) state = a === null ? 'skipped' : a === q.answer ? 'correct' : 'wrong';
+        else state = a === null ? 'open' : 'done';
+        var b = h('button', 'cbt__num is-' + state, String(n + 1));
+        b.type = 'button';
+        var flagged = !graded && S.flags.has(n);
+        if (flagged) b.classList.add('is-flagged');
+        if (n === S.i && S.mode !== 'result') { b.classList.add('is-current'); b.setAttribute('aria-current', 'true'); }
+        b.setAttribute('aria-label', 'Question ' + (n + 1) + ', ' + words[state] + (flagged ? ', flagged' : ''));
+        b.onclick = function () {
+          if (S.mode === 'result') { S.mode = 'review'; S.i = n; render(); }
+          else go(n);
+        };
+        grid.append(b);
+      });
+      var legend = h('div', 'cbt__legend');
+      var items = graded
+        ? [['correct', 'Correct'], ['wrong', 'Wrong'], ['skipped', 'Skipped']]
+        : [['done', 'Answered'], ['open', 'Not answered'], ['flagged', 'Flagged']];
+      items.forEach(function (it) {
+        var li = h('span', 'cbt__legenditem');
+        li.append(h('i', 'cbt__swatch is-' + it[0]), document.createTextNode(it[1]));
+        legend.append(li);
+      });
+      wrap.append(head, grid, legend);
+      return wrap;
+    }
+
+    /* ----- results ----- */
+    function renderResult() {
+      var r = S.result;
+      var box = h('section', 'cbt__card cbt__summary');
+      if (r.timedOut) box.append(h('p', 'cbt__timeup', 'Time is up. Your answers were submitted automatically.'));
+      box.append(
+        h('div', 'cbt__score', r.score + '/' + total),
+        h('div', 'cbt__pct', r.percent + '%'),
+        h('div', 'cbt__muted', 'Time used: ' + fmtTime(r.timeUsed)),
+        h('div', 'cbt__muted', 'Unanswered: ' + r.skipped)
+      );
+      box.append(button('Review answers', function () {
+        var first = 0;
+        for (var n = 0; n < total; n++) { if (S.answers[n] !== qs[n].answer) { first = n; break; } }
+        S.mode = 'review'; S.i = first; render();
+      }, 'cbt__btn cbt__btn--primary'));
+      return box;
+    }
+
+    function renderMain(keepScroll) {
+      var y = main.scrollTop;
+      main.textContent = '';
+      if (S.mode === 'result') main.append(renderResult(), renderNav());
+      else main.append(renderQuestion(), renderNav());
+      main.scrollTop = keepScroll ? y : 0;
+    }
+    function render() { renderBar(); renderMain(false); }
+
+    function go(n) {
+      if (n < 0 || n >= total) return;
+      S.i = n;
+      renderMain(false);
+    }
+    function choose(k) {
+      S.answers[S.i] = S.answers[S.i] === k ? null : k;
+      renderMain(true);
+    }
+
+    /* ----- submit / finish ----- */
+    var dlg = null;
+    function closeDialog() { if (dlg) { dlg.remove(); dlg = null; } }
+    function showDialog(title, body, actions) {
+      closeDialog();
+      dlg = h('div', 'cbt__scrim cbt__scrim--center');
+      var box = h('div', 'cbt__dialog');
+      box.setAttribute('role', 'alertdialog');
+      box.append(h('h2', 'cbt__dtitle', title), h('p', 'cbt__dbody', body));
+      var row = h('div', 'cbt__drow');
+      actions.forEach(function (a) {
+        row.append(button(a.label, function () { closeDialog(); if (a.run) a.run(); }, a.cls));
+      });
+      box.append(row);
+      dlg.append(box);
+      root.append(dlg);
+      row.lastChild.focus();
+    }
+    function askSubmit() {
+      var un = S.answers.filter(function (a) { return a === null; }).length;
+      var body = (un
+        ? un + (un === 1 ? ' question is' : ' questions are') + ' still unanswered. '
+        : 'You answered every question. ') + 'You cannot change answers after submitting.';
+      showDialog('Submit your answers?', body, [
+        { label: 'Keep working', cls: 'cbt__btn' },
+        { label: 'Submit', cls: 'cbt__btn cbt__btn--primary', run: function () { finish(false); } }
+      ]);
+    }
+    function finish(timedOut) {
+      if (S.mode !== 'exam') return;
+      clearInterval(tick);
+      closeDialog();
+      toggleCalc(false);
+      var score = qs.reduce(function (s, q, n) { return s + (S.answers[n] === q.answer ? 1 : 0); }, 0);
+      var skipped = S.answers.filter(function (a) { return a === null; }).length;
+      S.result = {
+        score: score,
+        total: total,
+        skipped: skipped,
+        wrong: total - score - skipped,
+        percent: Math.round((score / total) * 100),
+        timeUsed: Math.min(minutes * 60, Math.round((Date.now() - S.startedAt) / 1000)),
+        timedOut: !!timedOut,
+        answers: S.answers.slice()
+      };
+      S.mode = 'result';
+      render();
+      if (typeof opts.onFinish === 'function') opts.onFinish(S.result);
+    }
+
+    /* ----- calculator sheet ----- */
+    var sheet = null, calcTop = null, calcOut = null;
+    function paintCalc() {
+      if (!calcOut) return;
+      calcTop.textContent = calc.last ? calc.last.replace(/-/g, '−') + ' =' : '';
+      calcOut.textContent = calc.result === 'Error' ? 'Error' : (calc.expr || '0').replace(/-/g, '−');
+      calcOut.scrollLeft = calcOut.scrollWidth;
+    }
+    function press(v) {
+      if (v === 'C') { calc.expr = ''; calc.last = ''; calc.result = ''; calc.fresh = false; }
+      else if (v === 'back') {
+        if (calc.fresh) { calc.expr = ''; calc.last = ''; calc.fresh = false; }
+        else calc.expr = calc.expr.slice(0, -1);
+        calc.result = '';
+      }
+      else if (v === '=') {
+        if (!calc.expr) return;
+        var s = calc.expr;
+        var open = (s.match(/\(/g) || []).length, close = (s.match(/\)/g) || []).length;
+        if (open > close) s += new Array(open - close + 1).join(')');
+        try {
+          var out = String(parseFloat(calcEval(s).toPrecision(12)));
+          calc.last = s; calc.result = out;
+          calc.expr = out.indexOf('e') > -1 ? '' : out;
+        } catch (e) {
+          calc.last = ''; calc.result = 'Error'; calc.expr = '';
+        }
+        calc.fresh = true;
+      }
+      else {
+        if (calc.fresh && /[\d.π(√]/.test(v)) calc.expr = '';   /* a new number starts a new sum */
+        calc.fresh = false; calc.last = ''; calc.result = '';
+        calc.expr += v;
+      }
+      paintCalc();
+    }
+    function toggleCalc(open) {
+      if (!open) {
+        if (sheet) { sheet.remove(); sheet = null; calcTop = calcOut = null; }
+        S.calcOpen = false;
+        return;
+      }
+      if (sheet) return;
+      S.calcOpen = true;
+      sheet = h('div', 'cbt__scrim cbt__scrim--bottom');
+      sheet.onclick = function (e) { if (e.target === sheet) toggleCalc(false); };
+      var box = h('div', 'cbt__calc');
+      box.setAttribute('role', 'dialog');
+      box.setAttribute('aria-label', 'Calculator');
+      var head = h('div', 'cbt__calchead');
+      head.append(h('strong', null, 'Calculator'), button('Close', function () { toggleCalc(false); }, 'cbt__btn cbt__btn--ghost'));
+      calcTop = h('div', 'cbt__calctop');
+      calcOut = h('div', 'cbt__calcout');
+      var screen = h('div', 'cbt__screen');
+      screen.append(calcTop, calcOut);
+      var pad = h('div', 'cbt__pad');
+      KEYS.forEach(function (k) {
+        var b = h('button', 'cbt__ck' + (k[2] ? ' cbt__ck--' + k[2] : ''), k[0]);
+        b.type = 'button';
+        b.onclick = function () { press(k[1]); };
+        pad.append(b);
+      });
+      box.append(head, screen, pad);
+      sheet.append(box);
+      root.append(sheet);
+      paintCalc();
+    }
+
+    /* ----- keyboard (desktop) and accidental refresh ----- */
+    function onKey(e) {
+      if (S.mode !== 'exam' || S.calcOpen || dlg) return;
+      if (e.ctrlKey || e.metaKey || e.altKey) return;
+      if (e.key === 'ArrowRight') go(S.i + 1);
+      else if (e.key === 'ArrowLeft') go(S.i - 1);
+      else if (e.key.length === 1) {
+        var k = LETTERS.indexOf(e.key.toUpperCase());
+        if (k > -1 && k < qs[S.i].options.length) choose(k);
+      }
+    }
+    function warn(e) { if (S.mode === 'exam') { e.preventDefault(); e.returnValue = ''; } }
+    document.addEventListener('keydown', onKey);
+    window.addEventListener('beforeunload', warn);
+
+    function close() {
+      clearInterval(tick);
+      document.removeEventListener('keydown', onKey);
+      window.removeEventListener('beforeunload', warn);
+      document.body.style.overflow = prevOverflow;
+      root.remove();
+      if (typeof opts.onClose === 'function') opts.onClose(S.result);
+    }
+
+    render();
+    return { close: close };
+  }
+
+  global.CBTQuiz = { start: start, _calcEval: calcEval };
+})(window);
+/* ... to here */
+
+
+/* ---------- demo data (do not copy) ---------- */
+(function () {
+  var qs = [
+    { subject: 'Mathematics', q: 'If tan θ = 4/3 and θ is acute, find sin θ.', options: ['5/4', '4/5', '3/5', '3/4'], answer: 1,
+      explanation: 'Opposite = 4, adjacent = 3, so hypotenuse = 5. sin θ = opposite / hypotenuse = 4/5.' },
+    { subject: 'Mathematics', q: 'Solve 2x + 5 = 17.', options: ['4', '5', '6', '7'], answer: 2,
+      explanation: '2x = 12, so x = 6.' },
+    { subject: 'Mathematics', q: 'Simplify (x² − 9) / (x − 3).', options: ['x − 3', 'x + 3', 'x + 9', 'x² − 3'], answer: 1,
+      explanation: 'x² − 9 = (x − 3)(x + 3), so the (x − 3) cancels.' },
+    { subject: 'Mathematics', q: 'Find the value of log₁₀ 1000.', options: ['1', '2', '3', '4'], answer: 2,
+      explanation: '10³ = 1000, so the log is 3.' },
+    { subject: 'Mathematics', q: 'A fair coin is tossed twice. What is the probability of two heads?', options: ['1/4', '1/2', '3/4', '1/3'], answer: 0,
+      explanation: '1/2 × 1/2 = 1/4.' },
+    { subject: 'Mathematics', q: 'Find the area of a circle of radius 7 cm. (Take π = 22/7)', options: ['44 cm²', '49 cm²', '154 cm²', '308 cm²'], answer: 2,
+      explanation: 'Area = πr² = 22/7 × 49 = 154.' }
+  ];
+  for (var n = 0; n < 14; n++) {
+    var a = 12 + n * 3, b = 7 + n, ans = a + b, o = [ans + 1, ans + 2, ans + 3, ans + 4];
+    o[n % 4] = ans;
+    qs.push({ subject: 'Mathematics', q: 'Calculate ' + a + ' + ' + b + '.', options: o.map(String), answer: n % 4,
+      explanation: a + ' + ' + b + ' = ' + ans + '.' });
+  }
+  document.getElementById('startDemo').onclick = function () {
+    CBTQuiz.start({
+      title: 'Mathematics practice',
+      questions: qs,
+      durationMinutes: 10,
+      theme: window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark',
+      onFinish: function (r) { console.log('Quiz finished', r); }
+    });
+  };
+})();
+</script>
+</body>
+</html>
