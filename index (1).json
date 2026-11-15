@@ -1,0 +1,315 @@
+[
+  {
+    "file": "avatar-01.jpg",
+    "name": "Football fan",
+    "tags": [
+      "Boys",
+      "Curls"
+    ]
+  },
+  {
+    "file": "avatar-15.jpg",
+    "name": "Dancing",
+    "tags": [
+      "Girls",
+      "Curls"
+    ]
+  },
+  {
+    "file": "avatar-02.jpg",
+    "name": "Kurta",
+    "tags": [
+      "Boys"
+    ]
+  },
+  {
+    "file": "avatar-03.jpg",
+    "name": "Coat & headphones",
+    "tags": [
+      "Boys",
+      "Glasses"
+    ]
+  },
+  {
+    "file": "avatar-18.jpg",
+    "name": "Blonde waves",
+    "tags": [
+      "Girls",
+      "Glasses",
+      "Curls"
+    ]
+  },
+  {
+    "file": "avatar-04.jpg",
+    "name": "Red cap",
+    "tags": [
+      "Boys",
+      "Cap"
+    ]
+  },
+  {
+    "file": "avatar-05.jpg",
+    "name": "Glasses & goatee",
+    "tags": [
+      "Boys",
+      "Glasses"
+    ]
+  },
+  {
+    "file": "avatar-19.jpg",
+    "name": "Afro puff",
+    "tags": [
+      "Girls",
+      "Curls"
+    ]
+  },
+  {
+    "file": "avatar-06.jpg",
+    "name": "Hoodie",
+    "tags": [
+      "Boys"
+    ]
+  },
+  {
+    "file": "avatar-07.jpg",
+    "name": "Plaid shirt",
+    "tags": [
+      "Boys"
+    ]
+  },
+  {
+    "file": "avatar-20.jpg",
+    "name": "Twisted bun",
+    "tags": [
+      "Girls",
+      "Braids"
+    ]
+  },
+  {
+    "file": "avatar-08.jpg",
+    "name": "Wink",
+    "tags": [
+      "Boys"
+    ]
+  },
+  {
+    "file": "avatar-21.jpg",
+    "name": "Pink glasses",
+    "tags": [
+      "Girls",
+      "Glasses",
+      "Braids"
+    ]
+  },
+  {
+    "file": "avatar-09.jpg",
+    "name": "Blue polo",
+    "tags": [
+      "Boys"
+    ]
+  },
+  {
+    "file": "avatar-10.jpg",
+    "name": "Thinking",
+    "tags": [
+      "Boys"
+    ]
+  },
+  {
+    "file": "avatar-22.jpg",
+    "name": "Space buns",
+    "tags": [
+      "Girls",
+      "Glasses",
+      "Curls"
+    ]
+  },
+  {
+    "file": "avatar-11.jpg",
+    "name": "Clear glasses",
+    "tags": [
+      "Boys",
+      "Glasses"
+    ]
+  },
+  {
+    "file": "avatar-12.jpg",
+    "name": "Blonde curls",
+    "tags": [
+      "Boys",
+      "Curls"
+    ]
+  },
+  {
+    "file": "avatar-23.jpg",
+    "name": "Blowing a kiss",
+    "tags": [
+      "Girls",
+      "Glasses",
+      "Curls"
+    ]
+  },
+  {
+    "file": "avatar-13.jpg",
+    "name": "Green tee",
+    "tags": [
+      "Boys"
+    ]
+  },
+  {
+    "file": "avatar-14.jpg",
+    "name": "Sneakerhead",
+    "tags": [
+      "Boys",
+      "Curls"
+    ]
+  },
+  {
+    "file": "avatar-24.jpg",
+    "name": "Curly afro",
+    "tags": [
+      "Girls",
+      "Curls"
+    ]
+  },
+  {
+    "file": "avatar-16.jpg",
+    "name": "Purple wink",
+    "tags": [
+      "Boys",
+      "Glasses"
+    ]
+  },
+  {
+    "file": "avatar-17.jpg",
+    "name": "Blue beanie",
+    "tags": [
+      "Boys",
+      "Cap"
+    ]
+  },
+  {
+    "file": "avatar-25.jpg",
+    "name": "Gold hoops",
+    "tags": [
+      "Girls",
+      "Curls"
+    ]
+  },
+  {
+    "file": "starter-2.jpg",
+    "name": "Headphones",
+    "tags": [
+      "Boys",
+      "Curls",
+      "Cap"
+    ]
+  },
+  {
+    "file": "avatar-31.jpg",
+    "name": "Blonde twists",
+    "tags": [
+      "Curls"
+    ]
+  },
+  {
+    "file": "avatar-26.jpg",
+    "name": "Durag",
+    "tags": [
+      "Girls"
+    ]
+  },
+  {
+    "file": "avatar-32.jpg",
+    "name": "Cosy scarf",
+    "tags": [
+      "Boys",
+      "Curls"
+    ]
+  },
+  {
+    "file": "avatar-33.jpg",
+    "name": "Campus hallway",
+    "tags": [
+      "Boys"
+    ]
+  },
+  {
+    "file": "avatar-27.jpg",
+    "name": "Box braids",
+    "tags": [
+      "Girls",
+      "Braids"
+    ]
+  },
+  {
+    "file": "avatar-34.jpg",
+    "name": "Laptop & cap",
+    "tags": [
+      "Boys",
+      "Cap"
+    ]
+  },
+  {
+    "file": "avatar-28.jpg",
+    "name": "Golden hour",
+    "tags": [
+      "Girls",
+      "Braids"
+    ]
+  },
+  {
+    "file": "avatar-35.jpg",
+    "name": "Smiling polo",
+    "tags": [
+      "Boys"
+    ]
+  },
+  {
+    "file": "avatar-36.jpg",
+    "name": "Red sweater",
+    "tags": [
+      "Boys",
+      "Glasses"
+    ]
+  },
+  {
+    "file": "avatar-29.jpg",
+    "name": "Pink bob",
+    "tags": [
+      "Girls"
+    ]
+  },
+  {
+    "file": "avatar-37.jpg",
+    "name": "Ginger beard",
+    "tags": [
+      "Boys",
+      "Glasses"
+    ]
+  },
+  {
+    "file": "avatar-38.jpg",
+    "name": "Black knit",
+    "tags": [
+      "Boys"
+    ]
+  },
+  {
+    "file": "avatar-30.jpg",
+    "name": "White braids",
+    "tags": [
+      "Girls",
+      "Glasses",
+      "Braids"
+    ]
+  },
+  {
+    "file": "avatar-39.jpg",
+    "name": "Curly top",
+    "tags": [
+      "Boys",
+      "Curls"
+    ]
+  }
+]
