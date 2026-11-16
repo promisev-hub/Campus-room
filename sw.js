@@ -1,5 +1,5 @@
 /* CampusRoom Service Worker — network-first, self-updating */
-const CACHE_VERSION = "v4-" + "20260906";
+const CACHE_VERSION = "v5-" + "20260906";
 const CACHE_NAME = "campusroom-" + CACHE_VERSION;
 
 const PRECACHE_URLS = [
