@@ -307,32 +307,9 @@ function open(){
 function close(){ const o = $("as-ov"); if(o) o.classList.remove("open"); }
 window.crAvatarStudio = open;
 
-/* ───────── entry points: Settings tile + a button beside "Create avatar" ───────── */
-function addTile(){
-  const g = document.querySelector("#tab-settings .cs-grid"); if(!g || $("as-tile")) return;
-  const b = document.createElement("button"); b.type = "button"; b.className = "cs-tile"; b.id = "as-tile";
-  b.innerHTML = '<span class="t-ic">✨</span><span class="t-lb">Avatar Studio</span>';
-  b.addEventListener("click", e => { e.stopPropagation(); open(); });
-  g.insertBefore(b, g.children[2] || null);
-}
-let nearT = 0;
-function addNearCreate(){
-  document.querySelectorAll("button,[role=button],.mi,.mp-edit").forEach(n => {
-    if(n.dataset.asDone || n.closest("#as-ov") || n.children.length > 3) return;
-    const t = (n.textContent || "").trim();
-    if(t.length > 40 || !/create\s+(your\s+)?avatar/i.test(t)) return;
-    n.dataset.asDone = "1";
-    const b = document.createElement("button"); b.type = "button"; b.className = n.className || "";
-    b.textContent = "✨ More avatars"; b.style.marginLeft = "8px";
-    b.addEventListener("click", e => { e.stopPropagation(); e.preventDefault(); open(); });
-    n.insertAdjacentElement("afterend", b);
-  });
-}
-function init(){
-  addTile();
-  const st = $("tab-settings"); if(st) new MutationObserver(addTile).observe(st, { childList: true, subtree: true });
-  new MutationObserver(() => { clearTimeout(nearT); nearT = setTimeout(addNearCreate, 500); }).observe(document.body, { childList: true, subtree: true });
-  addNearCreate();
-}
+/* ───────── entry point ───────── */
+// Avatar Studio is opened from Edit Profile (✨ Avatar Studio, under "Change Photo").
+// Clean up the Settings tile an earlier version added, if it is still on the page.
+function init(){ const t = $("as-tile"); if(t) t.remove(); }
 if(document.readyState === "loading") document.addEventListener("DOMContentLoaded", init); else init();
 })();
