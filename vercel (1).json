@@ -1,0 +1,10 @@
+{
+  "functions": {
+    "api/*.js": { "maxDuration": 60 }
+  },
+  "rewrites": [
+    { "source": "/Campus-room", "destination": "/index.html" },
+    { "source": "/Campus-room/", "destination": "/index.html" },
+    { "source": "/Campus-room/:path*", "destination": "/:path*" }
+  ]
+}
