@@ -1,0 +1,66 @@
+// ─────────────────────────────────────────────────────────────────────────────
+// CampusRoom — Firestore rules to ADD for verified State / LGA groups
+// Merge these into your existing rules (Firebase console → Firestore → Rules).
+// Do not delete your current rules — put these helpers at the top of
+//   match /databases/{database}/documents { ... }
+// and add / merge the blocks below.
+// ─────────────────────────────────────────────────────────────────────────────
+
+// 1) helpers (inside match /databases/{database}/documents)
+function signedIn(){ return request.auth != null; }
+function isAdmin(){ return signedIn() && exists(/databases/$(database)/documents/admins/$(request.auth.uid)); }
+function isRep(){ return signedIn() && exists(/databases/$(database)/documents/stateReps/$(request.auth.uid)); }
+function repStates(){ return get(/databases/$(database)/documents/stateReps/$(request.auth.uid)).data.states; }
+function repFor(state){ return isAdmin() || (isRep() && state in repStates()); }
+function isVerifiedUser(){ return signedIn() && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('verified', false) == true; }
+
+// 2) the verification request (no photo in here) — one per person
+match /verifications/{uid} {
+  allow create: if signedIn() && request.auth.uid == uid
+                && request.resource.data.uid == uid
+                && request.resource.data.status == 'pending';
+  allow read:   if signedIn() && (request.auth.uid == uid || repFor(resource.data.state));
+  // the person can re-send (or add the AI note) until it is approved; reps/admins decide
+  allow update: if signedIn() && (
+                    (request.auth.uid == uid && resource.data.status != 'approved'
+                       && request.resource.data.status == 'pending')
+                    || repFor(resource.data.state));
+  allow delete: if isAdmin();
+}
+
+// 3) the photo of the document — private, deleted right after the decision
+match /verificationImages/{uid} {
+  allow create, update: if signedIn() && request.auth.uid == uid && request.resource.data.uid == uid;
+  allow read:   if signedIn() && (request.auth.uid == uid || repFor(resource.data.state));
+  allow delete: if signedIn() && (request.auth.uid == uid || repFor(resource.data.state));
+}
+
+// 4) who the state reps are — only admins can change this list
+match /stateReps/{uid} {
+  allow read:  if signedIn() && (request.auth.uid == uid || isAdmin());
+  allow write: if isAdmin();
+}
+
+// 5) users/{uid}: people may NOT mark themselves verified; reps/admins may (only these fields)
+//    In your existing  match /users/{uid}  block:
+//    a) make sure the normal owner update rule excludes the verified fields, e.g.
+//         allow update: if request.auth.uid == uid
+//            && !request.resource.data.diff(resource.data).affectedKeys()
+//                 .hasAny(['verified','verifiedType','verifiedState','lga','verifiedAt','verifiedBy']);
+//    b) add this extra rule for reps/admins:
+//         allow update: if signedIn() && repFor(resource.data.state)
+//            && request.resource.data.diff(resource.data).affectedKeys()
+//                 .hasOnly(['verified','verifiedType','verifiedState','lga','verifiedAt','verifiedBy']);
+
+// 6) groups/{gid}: verified-only groups (state / LGA). In your existing  match /groups/{gid}  block,
+//    add these conditions so an unverified person cannot add themselves:
+//      - creating a group that has requiresVerified == true:
+//          allow create: if request.resource.data.requiresVerified != true
+//                         || (isVerifiedUser()
+//                             && request.resource.data.stateKey == get(/databases/$(database)/documents/users/$(request.auth.uid)).data.verifiedState);
+//      - joining one (the update that adds your uid to members):
+//          allow update: if resource.data.requiresVerified != true || isVerifiedUser();   // OR-ed with your other update rules
+//
+// To make someone a state rep: Firebase console → Firestore → collection stateReps → document id = their user id →
+//   field  states  (array)  e.g. ["Ondo","Ekiti"]   and   name (string).
+// Or, as an admin, use "Verify Requests → Reps" inside the app.
