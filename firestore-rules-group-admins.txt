@@ -1,0 +1,91 @@
+// ─────────────────────────────────────────────────────────────────────────────
+// CampusRoom — Firestore rules for MEMBER-VOTED ADMINS of auto groups
+// Merge into your existing rules. These use the helpers signedIn() and isAdmin()
+// from firestore-rules-state-groups.txt — add those first if you haven't.
+// ─────────────────────────────────────────────────────────────────────────────
+
+// 1) helpers (inside  match /databases/{database}/documents { ... }  — skip any you already have)
+function gpath(gid){ return /databases/$(database)/documents/groups/$(gid); }
+function gdata(gid){ return get(/databases/$(database)/documents/groups/$(gid)).data; }
+function inGroup(gid){ return signedIn() && (request.auth.uid in gdata(gid).members); }
+function electionBar(gid){ return gdata(gid).members.size() > 30 ? math.ceil(gdata(gid).members.size() * 0.1) : 3; }
+function candPath(gid, uid){ return /databases/$(database)/documents/groups/$(gid)/candidates/$(uid); }
+function ballotPath(gid, uid){ return /databases/$(database)/documents/groups/$(gid)/ballots/$(uid); }
+
+// 2) people who run for admin
+match /groups/{gid}/candidates/{cid} {
+  allow read: if signedIn();
+  allow create: if inGroup(gid) && request.auth.uid == cid
+                && gdata(gid).get('type', '') == 'auto'
+                && request.resource.data.uid == cid
+                && request.resource.data.votes == 0
+                && request.resource.data.keys().hasOnly(['uid','name','photoURL','statement','votes','createdAt'])
+                && request.resource.data.statement.size() <= 140;
+  allow delete: if signedIn() && (request.auth.uid == cid || isAdmin());
+  // only the vote counter may change, and only together with the voter's own ballot (same batch)
+  allow update: if inGroup(gid)
+      && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['votes'])
+      && (
+        // +1 : the ballot now points here; if it pointed somewhere else before, that candidate loses 1 in the same batch
+        ( request.resource.data.votes == resource.data.votes + 1
+          && getAfter(ballotPath(gid, request.auth.uid)).data.candidate == cid
+          && ( !exists(ballotPath(gid, request.auth.uid))
+               || ( get(ballotPath(gid, request.auth.uid)).data.candidate != cid
+                    && ( !exists(candPath(gid, get(ballotPath(gid, request.auth.uid)).data.candidate))
+                         || getAfter(candPath(gid, get(ballotPath(gid, request.auth.uid)).data.candidate)).data.votes
+                            == get(candPath(gid, get(ballotPath(gid, request.auth.uid)).data.candidate)).data.votes - 1 ) ) ) ) )
+        ||
+        // −1 : the voter's ballot used to point here and now points elsewhere
+        ( request.resource.data.votes == resource.data.votes - 1
+          && exists(ballotPath(gid, request.auth.uid))
+          && get(ballotPath(gid, request.auth.uid)).data.candidate == cid
+          && getAfter(ballotPath(gid, request.auth.uid)).data.candidate != cid )
+      );
+}
+
+// 3) each member's single (secret) ballot — only the voter can read it
+match /groups/{gid}/ballots/{vid} {
+  allow read:   if signedIn() && request.auth.uid == vid;
+  allow create: if inGroup(gid) && request.auth.uid == vid
+                && request.resource.data.voter == vid
+                && request.resource.data.keys().hasOnly(['voter','candidate','at'])
+                && exists(candPath(gid, request.resource.data.candidate));
+  allow update: if inGroup(gid) && request.auth.uid == vid
+                && request.resource.data.voter == vid
+                && request.resource.data.keys().hasOnly(['voter','candidate','at'])
+                && request.resource.data.candidate != resource.data.candidate
+                && exists(candPath(gid, request.resource.data.candidate));
+  allow delete: if false;
+}
+
+// 4) in your existing  match /groups/{gid}  block, ADD these two update rules
+//    (rules are OR-ed, so keep your existing ones).
+//
+//    a) elected admins — a member's app adds ONE candidate who reached the bar, or removes ONE who
+//       fell below half of it (never someone appointed by an app admin):
+allow update: if inGroup(gid) && resource.data.get('type', '') == 'auto'
+   && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['admins'])
+   && (
+      ( request.resource.data.admins.size() == resource.data.get('admins', []).size() + 1
+        && request.resource.data.admins.size() <= 5
+        && request.resource.data.admins.hasAll(resource.data.get('admins', []))
+        && get(candPath(gid, request.resource.data.admins.removeAll(resource.data.get('admins', []))[0])).data.votes >= electionBar(gid) )
+      ||
+      ( request.resource.data.admins.size() == resource.data.get('admins', []).size() - 1
+        && resource.data.get('admins', []).hasAll(request.resource.data.admins)
+        && !(resource.data.get('admins', []).removeAll(request.resource.data.admins)[0] in resource.data.get('appointed', []))
+        && ( !exists(candPath(gid, resource.data.get('admins', []).removeAll(request.resource.data.admins)[0]))
+             || get(candPath(gid, resource.data.get('admins', []).removeAll(request.resource.data.admins)[0])).data.votes * 2 < electionBar(gid) ) )
+   );
+//
+//    b) an app admin (your  admins  collection) can appoint / remove people directly:
+allow update: if isAdmin()
+   && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['admins', 'appointed']);
+//
+//    IMPORTANT: check that your CURRENT groups update rule does not already let any member write the
+//    "admins" field — if it does, tighten it, otherwise the vote can be bypassed.
+
+// 5) optional — tune the ranking without re-deploying:
+//    match /config/{doc} { allow read: if signedIn(); allow write: if isAdmin(); }
+//    then create document  config/ranking  with numbers like:
+//      feed: { halfLifeHours: 12, w: { school: 0.25 } }     pymk: { mutual: 4 }
