@@ -101,7 +101,7 @@ function setPick(p){
 async function loadGallery(){
   if(ST.gallery) return ST.gallery;
   // works whether the pictures sit next to index.html (avatars.json) or inside an avatars/ folder (avatars/index.json)
-  const spots = [{ json: "avatars.json", dir: "" }, { json: "avatars/index.json", dir: "avatars/" }];
+  const spots = [{ json: "avatars.json", dir: "avatars/" }, { json: "avatars/index.json", dir: "avatars/" }];
   ST.gallery = [];
   for(const sp of spots){
     try{
