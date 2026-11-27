@@ -1,0 +1,45 @@
+<!-- Paste just before </body> in index.html, after all your other scripts -->
+<script>
+/* Live Online/Offline label for private chats.
+   Why it was always "Offline": every openRealChat(...) call passes false as the status,
+   and the label was never updated afterwards. */
+(function () {
+  var FRESH_MS = 150000; // counts as online if seen in the last 2.5 minutes
+  var unsub = null;
+
+  function watchPresence(userId) {
+    if (unsub) { try { unsub(); } catch (e) {} unsub = null; }
+    var el = document.getElementById('cw-st');
+    if (!el || !userId) return;
+    unsub = db.collection('users').doc(userId).onSnapshot(function (snap) {
+      // chat was closed: stop listening
+      if (typeof activeChatId !== 'undefined' && !activeChatId) {
+        if (unsub) { try { unsub(); } catch (e) {} unsub = null; }
+        return;
+      }
+      var d = snap.data() || {};
+      var seen = d.lastSeen && d.lastSeen.toMillis ? d.lastSeen.toMillis() : 0;
+      var on = d.online === true && (Date.now() - seen) < FRESH_MS;
+      el.textContent = on ? 'Online' : 'Offline';
+      el.style.color = on ? '#22c55e' : 'var(--muted)';
+    }, function () {});
+  }
+
+  // keep the real function, then start watching after it opens the chat
+  var original = window.openRealChat;
+  if (typeof original === 'function') {
+    window.openRealChat = async function (userId) {
+      var result = await original.apply(this, arguments);
+      watchPresence(userId);
+      return result;
+    };
+  }
+
+  // heartbeat: refresh "last seen" every minute while the app is on screen
+  setInterval(function () {
+    if (window.CU && document.visibilityState === 'visible' && typeof setOnlineStatus === 'function') {
+      setOnlineStatus(true);
+    }
+  }, 60000);
+})();
+</script>
