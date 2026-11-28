@@ -1,7 +1,7 @@
 // CampusRoom Service Worker v2
 // Bump VERSION on every deploy (and whenever you replace the logo or icons).
 // Old caches are deleted automatically.
-const VERSION = 'cr-2026-11-28-1';
+const VERSION = 'cr-2026-11-28-2';
 const CACHE = 'campusroom-' + VERSION;
 
 // Set to true for the FIRST deploy only. Phones stuck on the old cached app
