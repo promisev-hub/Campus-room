@@ -1928,7 +1928,7 @@ sendMsg = async function(){
       await db.collection("chats").doc(activeChatId).set({
         updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
         lastMsg: txt,
-        members: [CU.uid]
+        members: activeChatId.split("_"), lastSenderId: CU.uid, lastSenderName: CU.name || "User"
       }, {merge: true});
     }catch(e){
       showToast("❌ Message failed. Check connection.");
@@ -5035,7 +5035,7 @@ document.getElementById("chat-media-file")?.addEventListener("change", async fun
     });
     await db.collection("chats").doc(activeChatId).set({
       updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
-      lastMsg: kind==="video" ? "🎬 Video" : "📷 Photo", members:[CU.uid]
+      lastMsg: kind==="video" ? "🎬 Video" : "📷 Photo", members: activeChatId.split("_"), lastSenderId: CU.uid, lastSenderName: CU.name || "User"
     },{merge:true});
     showToast("✅ Sent");
   }catch(e){ showToast("❌ Upload failed — check your connection"); }
@@ -7464,7 +7464,7 @@ goTab = function(t){
         await db.collection("groups").doc(gid).set({ updatedAt: FV().serverTimestamp(), lastMsg: label }, { merge: true });
       }else{
         await db.collection("chats").doc(activeChatId).collection("messages").add(base);
-        await db.collection("chats").doc(activeChatId).set({ updatedAt: FV().serverTimestamp(), lastMsg: label, members: FV().arrayUnion(CU.uid) }, { merge: true });
+        await db.collection("chats").doc(activeChatId).set({ updatedAt: FV().serverTimestamp(), lastMsg: label, members: activeChatId.split("_"), lastSenderId: CU.uid, lastSenderName: CU.name || "User" }, { merge: true });
       }
       return true;
     }catch(e){ console.log("send media failed", e); toast("❌ Couldn't send. Check your connection."); return false; }
