@@ -5057,7 +5057,7 @@ async function openRealChat(userId, userName, userAv, userPhoto, isOnline){
   msgsEl.innerHTML = '<div style="text-align:center;padding:calc(20px * var(--sp,1));color:var(--muted);font-size:calc(13px * var(--fs,1));">Loading messages…</div>';
 
   unsubChat = db.collection("chats").doc(activeChatId)
-    .collection("messages").orderBy("createdAt","asc").limit(50)
+    .collection("messages").orderBy("createdAt","asc").limitToLast(50)
     .onSnapshot(snap=>{
       msgsEl.innerHTML = "";
       if(snap.empty){
